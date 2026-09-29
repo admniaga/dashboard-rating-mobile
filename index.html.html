@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rating PLN Mobile – UID Jabar</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --bg:#f0f4f8;--card:#fff;--hdr:#00487a;--hdr2:#003a61;
+  --acc:#0071bc;--acc2:#0ea5e9;
+  --text:#1a2332;--text2:#4a5a6d;--text3:#8fa0b3;
+  --border:#dde3ea;--rowalt:#f7f9fb;
+  --green:#15803d;--greenbg:#dcfce7;
+  --red:#c81e1e;--redbg:#fee2e2;
+  --amber:#b45309;--amberbg:#fef3c7;
+  --chip:#0071bc;--chipbg:#dbeafe;
+  color-scheme:light;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1421;--card:#172130;--hdr:#001f3a;--hdr2:#001530;
+  --acc:#38b2f0;--acc2:#7dd3fc;
+  --text:#e8eef5;--text2:#8fa0b3;--text3:#4a6070;
+  --border:#2a3a4d;--rowalt:#1c2d3e;
+  --green:#4ade80;--greenbg:#052e16;
+  --red:#f87171;--redbg:#450a0a;
+  --amber:#fbbf24;--amberbg:#3d1d00;
+  --chip:#38b2f0;--chipbg:#0c2a45;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0d1421;--card:#172130;--hdr:#001f3a;--hdr2:#001530;
+  --acc:#38b2f0;--acc2:#7dd3fc;
+  --text:#e8eef5;--text2:#8fa0b3;--text3:#4a6070;
+  --border:#2a3a4d;--rowalt:#1c2d3e;
+  --green:#4ade80;--greenbg:#052e16;
+  --red:#f87171;--redbg:#450a0a;
+  --amber:#fbbf24;--amberbg:#3d1d00;
+  --chip:#38b2f0;--chipbg:#0c2a45;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:var(--hdr);color:#fff;padding:10px 14px 8px;position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.hdr-t{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-size:20px;flex-shrink:0}
+.brand{flex:1;min-width:140px}
+.brand h1{font-size:13px;font-weight:700;line-height:1.3}
+.brand small{font-size:10px;opacity:.7}
+.hdr-b{margin-top:5px;font-size:10px;opacity:.65;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+/* ── DATE BAR ── */
+.datebar{background:var(--hdr2);padding:8px 14px;display:flex;align-items:center;
+  gap:7px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.07)}
+.datebar label{font-size:11px;color:rgba(255,255,255,.65);white-space:nowrap}
+.datebar input[type=date]{
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  border-radius:5px;color:#fff;padding:4px 8px;font-size:12px;outline:none;
+  font-family:inherit;cursor:pointer}
+.datebar input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.7}
+.sep{color:rgba(255,255,255,.4);font-size:12px;padding:0 2px}
+.btn{border:none;border-radius:6px;padding:5px 11px;font-size:11px;font-weight:600;
+  cursor:pointer;font-family:inherit;transition:.15s;display:inline-flex;align-items:center;gap:4px}
+.btn-w{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.22)}
+.btn-w:hover{background:rgba(255,255,255,.25)}
+.btn-light{background:#fff;color:var(--acc)}
+.btn-light:hover{background:#e8f4fd}
+.btn-blue{background:var(--acc);color:#fff}
+.btn-blue:hover{opacity:.88}
+.dbadge{background:rgba(255,255,255,.14);color:#fff;border-radius:999px;
+  padding:2px 9px;font-size:10px;font-weight:600;white-space:nowrap}
+.dbadge.libur{background:#dc2626}
+.dbadge.weekend{background:#b45309}
+
+/* ── PAGE ── */
+.page{padding:12px 12px 28px;max-width:1080px;margin:0 auto}
+
+/* ── CARDS ── */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:11px 13px}
+.card-l{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)}
+.card-v{font-size:22px;font-weight:800;line-height:1.1;margin-top:2px;font-variant-numeric:tabular-nums}
+.card-s{font-size:10px;color:var(--text3);margin-top:1px}
+.cv-blue{color:var(--acc2)}.cv-green{color:var(--green)}.cv-red{color:var(--red)}.cv-amber{color:var(--amber)}
+
+/* ── SECTION HEADER ── */
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;flex-wrap:wrap;gap:6px}
+.sec-t{font-size:13px;font-weight:700;color:var(--text)}
+.sec-i{font-size:11px;color:var(--text3);background:var(--rowalt);padding:2px 9px;border-radius:999px}
+.sec-acts{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ── TABLE ── */
+.tbox{background:var(--card);border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-bottom:14px}
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+thead th{background:var(--hdr);color:#fff;padding:8px 10px;font-size:11px;font-weight:600;
+  white-space:nowrap;text-align:right}
+thead th.tl{text-align:left}
+tbody tr{border-top:1px solid var(--border)}
+tbody tr:nth-child(even) td{background:var(--rowalt)}
+tbody td{padding:7px 10px;font-size:12px;text-align:right;color:var(--text2)}
+tbody td.tl{text-align:left;font-weight:600;color:var(--text);white-space:nowrap}
+.pos{color:var(--green);font-weight:700}
+.neg{color:var(--red);font-weight:700}
+.zer{color:var(--text3)}
+.tot-row td{font-weight:700;color:var(--text);background:rgba(0,71,122,.07)!important;
+  border-top:2px solid var(--border)}
+.tot-row td.pos{color:var(--green)}.tot-row td.neg{color:var(--red)}
+
+/* ── RANK ── */
+.rnk{display:inline-block;width:18px;height:18px;border-radius:50%;text-align:center;
+  line-height:18px;font-size:10px;font-weight:700;margin-right:4px;flex-shrink:0}
+.r1{background:#FFD700;color:#000}.r2{background:#C0C0C0;color:#000}.r3{background:#CD7F32;color:#fff}
+.rn{background:var(--border);color:var(--text3)}
+
+/* ── ULP TABLE ── */
+.ulp-sec{margin-bottom:14px}
+.ulp-filter{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.uf-btn{background:var(--card);border:1px solid var(--border);border-radius:6px;
+  color:var(--text2);padding:4px 10px;font-size:11px;font-weight:500;cursor:pointer;
+  font-family:inherit;transition:.15s}
+.uf-btn:hover{border-color:var(--acc);color:var(--acc)}
+.uf-btn.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+.ulp-acc{background:var(--card);border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-bottom:8px}
+.ulp-hdr{padding:9px 13px;display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;user-select:none;background:rgba(0,71,122,.05)}
+.ulp-hdr:hover{background:rgba(0,71,122,.1)}
+.ulp-hdr-t{font-size:12px;font-weight:700;color:var(--acc)}
+.ulp-hdr-i{font-size:11px;color:var(--text3)}
+.ulp-body{display:none;border-top:1px solid var(--border)}
+.ulp-body.open{display:block}
+/* ── ROW COLORS ── */
+tr.row-ok td{background:#f0fdf4!important}
+tr.row-ok td.tl{color:var(--green)!important}
+tr.row-ng td{background:#fff5f5!important}
+tr.row-ng td.tl{color:var(--red)!important}
+@media(prefers-color-scheme:dark){
+  tr.row-ok td{background:#052e16!important}
+  tr.row-ng td{background:#450a0a!important}
+}
+:root[data-theme="dark"] tr.row-ok td{background:#052e16!important}
+:root[data-theme="dark"] tr.row-ng td{background:#450a0a!important}
+
+/* ── SETTINGS ── */
+.settings{background:var(--card);border:1px solid var(--border);border-radius:9px;
+  padding:14px;margin-bottom:12px;display:none}
+.settings.open{display:block}
+.settings h3{font-size:12px;font-weight:700;margin-bottom:10px}
+.hol-chips{display:flex;flex-wrap:wrap;gap:5px;min-height:26px;margin-bottom:10px}
+.hol-chip{background:var(--chipbg);color:var(--chip);border:none;border-radius:999px;
+  padding:3px 10px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit}
+.hol-chip:hover{opacity:.7}
+.add-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.add-row input{padding:5px 9px;border:1px solid var(--border);border-radius:5px;
+  background:var(--bg);color:var(--text);font-family:inherit;font-size:12px}
+.sinfo{font-size:10px;color:var(--text3);margin-top:8px;line-height:1.6}
+
+/* ── LOADING ── */
+.msg-box{padding:32px;text-align:center;color:var(--text3)}
+.spin{display:inline-block;width:20px;height:20px;border:2.5px solid var(--border);
+  border-top-color:var(--acc);border-radius:50%;animation:sp .75s linear infinite;vertical-align:middle;margin-right:7px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:16px;right:14px;z-index:999;background:#1a2332;color:#fff;
+  padding:9px 14px;border-radius:8px;font-size:12px;font-weight:500;
+  opacity:0;pointer-events:none;transform:translateY(6px);transition:.22s;max-width:280px}
+.toast.on{opacity:1;transform:none}
+
+/* ── PRINT ── */
+@media print{
+  body{background:#fff!important;color:#000!important;font-size:11px}
+  .hdr,.datebar,.cards,.sec-acts,.ulp-sec,.settings,.toast{display:none!important}
+  .tbox{border:1px solid #ccc;break-inside:avoid}
+  thead th{background:#00487a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .tot-row td{background:#e8f4fd!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .page{padding:0;max-width:100%}
+  .print-title{display:block!important;font-size:14px;font-weight:700;margin-bottom:8px;text-align:center}
+}
+.print-title{display:none}
+
+@media(max-width:520px){
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .datebar{gap:5px}
+  thead th,tbody td{padding:6px 7px;font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-t">
+    <div class="logo">📱</div>
+    <div class="brand">
+      <h1>Korektif Action Rating PLN Mobile</h1>
+      <small>PLN UID Jawa Barat</small>
+    </div>
+    <button class="btn btn-w" onclick="toggleSettings()">⚙️ Pengaturan</button>
+  </div>
+  <div class="hdr-b">
+    <span>Update: <b id="lastUpdate">—</b></span>
+    <span id="statusMsg">Menginisialisasi...</span>
+  </div>
+</div>
+
+<!-- DATE BAR -->
+<div class="datebar">
+  <label>Dari:</label>
+  <input type="date" id="dateFrom">
+  <span class="sep">→</span>
+  <label>Sampai:</label>
+  <input type="date" id="dateTo">
+  <button class="btn btn-light" onclick="setToday()">Hari Ini</button>
+  <button class="btn btn-w" onclick="loadData()">⟳ Refresh</button>
+  <span class="dbadge" id="dayBadge" style="display:none"></span>
+</div>
+
+<div class="page">
+
+  <!-- SETTINGS (collapsible) -->
+  <div class="settings" id="settingsPanel">
+
+    <!-- Sheet ID setting -->
+    <h3>🔗 Google Spreadsheet ID</h3>
+    <div class="add-row" style="margin-bottom:4px">
+      <input type="text" id="sheetIdInput" placeholder="Paste Sheet ID baru di sini…"
+        style="flex:1;font-size:11px;font-family:monospace;border:1px solid var(--border);
+        border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+      <button class="btn btn-blue" onclick="applySheetId()">Simpan &amp; Muat</button>
+    </div>
+    <p class="sinfo" style="margin-bottom:12px">
+      ID ada di URL spreadsheet: <code style="font-size:10px;background:var(--rowalt);padding:1px 4px;border-radius:3px">docs.google.com/spreadsheets/d/<b style="color:var(--acc)">[ID INI]</b>/edit</code><br>
+      ID aktif sekarang: <span id="sheetIdActive" style="font-family:monospace;font-size:10px;color:var(--text2)"></span>
+    </p>
+
+    <h3>📅 Hari Libur / Tanggal Merah — dianggap sebagai Weekend (target kolom G)</h3>
+    <div class="hol-chips" id="holChips"></div>
+    <div class="add-row">
+      <label style="font-size:11px;font-weight:600">Tambah:</label>
+      <input type="date" id="newHol">
+      <button class="btn btn-blue" onclick="addHol()">+ Tambah</button>
+    </div>
+    <p class="sinfo">
+      ✅ Sheet rekap <b>otomatis</b> diisi dari form response — tidak perlu update manual.<br>
+      ✅ Target diambil dari sheet "01": kolom G = Weekend/Libur, kolom H = Hari Kerja.<br>
+      ℹ️ Sabtu &amp; Minggu + tanggal di atas otomatis pakai target weekend (kolom G).
+    </p>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-l">Periode</div>
+      <div class="card-v cv-blue" id="cPeriode" style="font-size:13px;margin-top:4px">—</div>
+    </div>
+    <div class="card">
+      <div class="card-l">Total Target</div>
+      <div class="card-v cv-blue" id="cTarget">—</div>
+    </div>
+    <div class="card">
+      <div class="card-l">Total Realisasi</div>
+      <div class="card-v" id="cReal">—</div>
+    </div>
+    <div class="card">
+      <div class="card-l">Selisih</div>
+      <div class="card-v" id="cSel">—</div>
+    </div>
+    <div class="card">
+      <div class="card-l">Carry Over</div>
+      <div class="card-v cv-amber" id="cCO">—</div>
+      <div class="card-s" id="cCOsub"></div>
+    </div>
+    <div class="card">
+      <div class="card-l">Capaian</div>
+      <div class="card-v" id="cPct">—</div>
+    </div>
+  </div>
+
+  <!-- PRINT TITLE -->
+  <div class="print-title" id="printTitle"></div>
+
+  <!-- TABLE UP3 -->
+  <div class="sec">
+    <div>
+      <span class="sec-t">Realisasi per UP3</span>
+      <span class="sec-i" id="tblInfo" style="margin-left:8px">—</span>
+    </div>
+    <div class="sec-acts">
+      <button class="btn btn-w" onclick="doScreenshot()">📸 Screenshot</button>
+      <button class="btn btn-w" onclick="doPrint()">🖨️ Export PDF</button>
+    </div>
+  </div>
+  <div class="tbox" id="captureArea">
+    <div class="tscroll">
+      <table id="mainTable">
+        <thead id="mainHead"></thead>
+        <tbody id="mainBody">
+          <tr><td colspan="6"><div class="msg-box"><div class="spin"></div>Memuat...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TABLE ULP -->
+  <div class="sec">
+    <span class="sec-t">Realisasi per ULP</span>
+    <span class="sec-i" id="ulpInfo">—</span>
+  </div>
+  <div class="ulp-filter" id="ulpFilter"></div>
+  <div class="ulp-sec" id="ulpSec">
+    <div class="msg-box" style="background:var(--card);border:1px solid var(--border);border-radius:9px">
+      <div class="spin"></div>Memuat data ULP...
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════
+const SHEET_ID_DEFAULT = "1o60PPGUmsC2X0FVwoVdKuR3ePIMfqRxB0_0Vf0w_rMo";
+function getSheetId(){ try{return localStorage.getItem('rating_sheetid')||SHEET_ID_DEFAULT;}catch(e){return SHEET_ID_DEFAULT;} }
+function saveSheetId(id){ try{localStorage.setItem('rating_sheetid',id.trim());}catch(e){} }
+
+const UP3S = [
+  "KANTOR UID JABAR","UP3 CIKARANG","UP3 INDRAMAYU","UP3 SUMEDANG",
+  "UP3 GUNUNG PUTRI","UP3 KARAWANG","UP3 DEPOK","UP3 CIREBON",
+  "UP3 GARUT","UP3 PURWAKARTA","UP3 BEKASI","UP3 CIMAHI",
+  "UP3 MAJALAYA","UP3 CIANJUR","UP3 TASIKMALAYA","UP3 BANDUNG",
+  "UP3 BOGOR","UP3 SUKABUMI"
+];
+const UP3_SET = new Set(UP3S.map(u => u.toUpperCase()));
+
+const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const DAYS   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+// Default holidays 2026
+const DEF_HOL = [
+  "2026-01-01","2026-01-27","2026-01-28","2026-01-29","2026-01-30",
+  "2026-03-31","2026-04-01","2026-04-02","2026-04-03",
+  "2026-04-15","2026-04-16","2026-05-01","2026-05-13","2026-05-14",
+  "2026-05-20","2026-05-22","2026-05-26","2026-06-01",
+  "2026-06-03","2026-06-04","2026-08-17","2026-09-11","2026-09-12",
+  "2026-10-28","2026-11-25","2026-12-25"
+];
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let selUlpUp3 = 'SEMUA'; // ULP filter state
+
+const S = {
+  targets:{},   // { "UP3 BEKASI": {wd:N, we:N} }
+  rekap:{},     // { "UP3 BEKASI": { "2026-09-29": N } }
+  ulp:{},       // { "UP3 BEKASI": { "ULP BEKASI KOTA": { "2026-09-29": N } } }
+  holidays: loadHol(),
+  loaded: false
+};
+
+function loadHol(){
+  try{ const h=localStorage.getItem('rating_hol'); return h?JSON.parse(h):DEF_HOL.slice(); }
+  catch(e){ return DEF_HOL.slice(); }
+}
+function saveHol(){ try{localStorage.setItem('rating_hol',JSON.stringify(S.holidays));}catch(e){} }
+
+// ══════════════════════════════════════════════
+//  DATE UTILS
+// ══════════════════════════════════════════════
+function toYMD(d){
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+function parseYMD(s){
+  const [y,m,d]=s.split('-');
+  return new Date(+y,+m-1,+d);
+}
+function isWE(ymd){
+  const d=parseYMD(ymd), w=d.getDay();
+  return w===0||w===6||S.holidays.includes(ymd);
+}
+function fmtShort(ymd){
+  const d=parseYMD(ymd);
+  return d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear();
+}
+function fmtFull(ymd){
+  const d=parseYMD(ymd);
+  return DAYS[d.getDay()]+', '+d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear();
+}
+function datesBetween(from,to){
+  const out=[];
+  let d=parseYMD(from), end=parseYMD(to);
+  while(d<=end){ out.push(toYMD(d)); d.setDate(d.getDate()+1); }
+  return out;
+}
+function dayAfter(ymd){
+  const d=parseYMD(ymd); d.setDate(d.getDate()+1); return toYMD(d);
+}
+
+// ══════════════════════════════════════════════
+//  GVIZ FETCH
+// ══════════════════════════════════════════════
+function fetchGviz(sheet, range, onData, onErr){
+  const cb='gviz_'+Math.floor(Math.random()*1e9);
+  let done=false;
+  const scr=document.createElement('script');
+  const tmr=setTimeout(()=>{
+    if(done)return; done=true; cleanup();
+    onErr(new Error('Timeout sheet: '+sheet));
+  },25000);
+  function cleanup(){
+    clearTimeout(tmr);
+    try{delete window[cb];}catch(e){window[cb]=undefined;}
+    if(scr.parentNode)scr.parentNode.removeChild(scr);
+  }
+  window[cb]=json=>{ if(done)return; done=true; cleanup(); onData(json); };
+  scr.onerror=()=>{
+    if(done)return; done=true; cleanup();
+    onErr(new Error('Gagal memuat "'+sheet+'" — pastikan share "Anyone with the link"'));
+  };
+  scr.src='https://docs.google.com/spreadsheets/d/'+getSheetId()+'/gviz/tq'
+    +'?sheet='+encodeURIComponent(sheet)
+    +'&range='+encodeURIComponent(range)
+    +'&headers=0&tqx=out:json;responseHandler:'+cb
+    +'&_ts='+Date.now();
+  document.body.appendChild(scr);
+}
+
+function gVal(row,i){
+  const c=(row.c||[])[i]; return c?c.v:null;
+}
+function gStr(row,i){
+  const c=(row.c||[])[i]; if(!c)return '';
+  return c.f!=null?String(c.f).trim():c.v!=null?String(c.v).trim():'';
+}
+function gDateCell(c){
+  if(!c)return '';
+  if(c.f){ const s=String(c.f).trim();
+    const m1=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m1)return m1[3]+'-'+pad(+m1[m1[2].length===4?1:2])+'-'+pad(+m1[m1[2].length===4?2:1]);
+    // try dd/mm/yyyy specifically
+    const m2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m2)return m2[3]+'-'+pad(+m2[2])+'-'+pad(+m2[1]);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  }
+  if(c.v){
+    const sv=String(c.v);
+    const dm=sv.match(/Date\((\d+),(\d+),(\d+)\)/);
+    if(dm)return dm[1]+'-'+pad(+dm[2]+1)+'-'+pad(+dm[3]);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(sv))return sv;
+  }
+  return '';
+}
+
+// ══════════════════════════════════════════════
+//  PARSE SHEET 01 → TARGETS
+//  Col 0=UP3, Col G(6)=weekend, Col H(7)=weekday
+// ══════════════════════════════════════════════
+function parseTargets(gviz){
+  S.targets={};
+  if(!gviz||!gviz.table)return;
+  const rows=gviz.table.rows;
+  if(!rows||rows.length<2)return;
+
+  // Auto-detect columns G/H from header
+  const hdr=rows[0];
+  let cU=0, cWE=6, cWD=7;
+  for(let i=0;i<(hdr.c||[]).length;i++){
+    const h=gStr(hdr,i).toLowerCase();
+    if(/weekend/.test(h))cWE=i;
+    if(/weekday|hari kerja/.test(h))cWD=i;
+  }
+
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r];
+    const name=gStr(row,cU).toUpperCase();
+    if(!name)continue;
+    const we=parseInt(gVal(row,cWE))||0;
+    const wd=parseInt(gVal(row,cWD))||0;
+    if(we||wd) S.targets[name]={we,wd};
+  }
+}
+
+// ══════════════════════════════════════════════
+//  PARSE REKAP
+//  Row0: [name, date1, date2, ...]
+//  Rows: UP3 rows, then ULP rows under UP3
+// ══════════════════════════════════════════════
+function parseRekap(gviz){
+  S.rekap={}; S.ulp={};
+  if(!gviz||!gviz.table)return;
+  const rows=gviz.table.rows;
+  if(!rows||rows.length<2)return;
+
+  // Parse date columns from header
+  const hdr=rows[0];
+  const dateCols=[];
+  for(let i=1;i<(hdr.c||[]).length;i++){
+    const ymd=gDateCell((hdr.c||[])[i]);
+    if(ymd)dateCols.push({i,ymd});
+  }
+
+  let curUp3=null;
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r];
+    const name=gStr(row,0).toUpperCase();
+    if(!name)continue;
+    const isUp3=UP3_SET.has(name);
+    if(isUp3){
+      curUp3=name;
+      if(!S.rekap[name])S.rekap[name]={};
+    }
+
+    for(const {i,ymd} of dateCols){
+      const v=parseInt(gVal(row,i))||0;
+      if(!v)continue;
+      if(isUp3){
+        S.rekap[name][ymd]=(S.rekap[name][ymd]||0)+v;
+      } else if(curUp3){
+        if(!S.ulp[curUp3])S.ulp[curUp3]={};
+        if(!S.ulp[curUp3][name])S.ulp[curUp3][name]={};
+        S.ulp[curUp3][name][ymd]=(S.ulp[curUp3][name][ymd]||0)+v;
+      }
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+//  CARRY-OVER RULES:
+//  - Kurang  → CO = target - real  (dibawa ke hari berikutnya)
+//  - Cukup/Lebih → CO = 0  (kembali ke target awal, tidak ada kredit)
+// ══════════════════════════════════════════════
+function baseTgt(up3,ymd){
+  const t=S.targets[up3]||{we:0,wd:0};
+  return isWE(ymd)?t.we:t.wd;
+}
+
+// ══════════════════════════════════════════════
+//  COMPUTE for a date range
+// ══════════════════════════════════════════════
+function computeRange(fromYmd,toYmd){
+  const days=datesBetween(fromYmd,toYmd);
+
+  // Rolling carry-over per UP3
+  const runCO={};
+  for(const u of UP3S) runCO[u]=0;
+
+  // Accumulators
+  const totBase={}, totEff={}, totReal={};
+  for(const u of UP3S){ totBase[u]=0; totEff[u]=0; totReal[u]=0; }
+
+  for(const ymd of days){
+    for(const u of UP3S){
+      const base=baseTgt(u,ymd);
+      const eff=base+runCO[u];
+      const real=(S.rekap[u]&&S.rekap[u][ymd])||0;
+      totBase[u]+=base;
+      totEff[u]+=eff;
+      totReal[u]+=real;
+      // Carry-over: kurang → bawa, cukup/lebih → 0
+      runCO[u]=Math.max(0,eff-real);
+    }
+  }
+
+  // Final carry-over = runCO after last day
+  // Target+1 = base(next day) + final CO
+  const nextDay=dayAfter(toYmd);
+  const rows=UP3S.map(u=>({
+    u,
+    base: totBase[u],
+    eff:  totEff[u],
+    real: totReal[u],
+    sel:  totReal[u]-totEff[u],
+    co:   runCO[u],
+    tgt1: baseTgt(u,nextDay)+runCO[u]
+  }));
+
+  // Sort: tercapai (hijau) dahulu, lalu tidak tercapai (merah); dalam grup sort real desc
+  rows.sort((a,b)=>{
+    const aOk=a.real>=a.eff, bOk=b.real>=b.eff;
+    if(aOk!==bOk) return aOk?-1:1;
+    return b.real-a.real;
+  });
+
+  // Totals
+  const tot={base:0,eff:0,real:0,sel:0,co:0,tgt1:0};
+  for(const r of rows){
+    tot.base+=r.base; tot.eff+=r.eff; tot.real+=r.real;
+    tot.sel+=r.sel;   tot.co+=r.co;   tot.tgt1+=r.tgt1;
+  }
+
+  return {rows,tot,days,nextDay};
+}
+
+// ULP totals for the range
+function computeULP(fromYmd,toYmd){
+  const days=datesBetween(fromYmd,toYmd);
+  // { up3: { ulp: total } }
+  const out={};
+  for(const u of UP3S){
+    if(!S.ulp[u])continue;
+    out[u]={};
+    for(const ulp of Object.keys(S.ulp[u])){
+      let tot=0;
+      for(const ymd of days) tot+=(S.ulp[u][ulp][ymd]||0);
+      if(tot>0) out[u][ulp]=tot;
+    }
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════
+function fmt(n){ return n.toLocaleString('id-ID'); }
+function pct(r,t){ return t>0?Math.round(r/t*100):0; }
+
+function renderAll(){
+  const from=document.getElementById('dateFrom').value;
+  const to=document.getElementById('dateTo').value;
+  if(!from||!to||!S.loaded){ return; }
+  if(from>to){
+    document.getElementById('mainBody').innerHTML=
+      '<tr><td colspan="6"><div class="msg-box">⚠️ Tanggal awal harus ≤ akhir</div></td></tr>';
+    return;
+  }
+
+  const isSingle=from===to;
+  const {rows,tot,days,nextDay}=computeRange(from,to);
+  const nWork=days.filter(d=>!isWE(d)).length;
+
+  // Day badge
+  const badge=document.getElementById('dayBadge');
+  if(isSingle){
+    const we=isWE(from), isLib=S.holidays.includes(from);
+    badge.textContent=fmtFull(from)+(isLib?' 🔴':we?' 🌴':'');
+    badge.className='dbadge'+(isLib?' libur':we?' weekend':'');
+    badge.style.display='';
+  } else {
+    badge.style.display='none';
+  }
+
+  // Cards
+  const periodeEl=document.getElementById('cPeriode');
+  periodeEl.textContent=isSingle?fmtShort(from):fmtShort(from)+' – '+fmtShort(to);
+
+  document.getElementById('cTarget').textContent=fmt(tot.eff);
+  const realEl=document.getElementById('cReal');
+  realEl.textContent=fmt(tot.real);
+  realEl.className='card-v '+(tot.real>=tot.eff?'cv-green':'cv-red');
+
+  const selEl=document.getElementById('cSel');
+  selEl.textContent=(tot.sel>=0?'+':'')+fmt(tot.sel);
+  selEl.className='card-v '+(tot.sel>=0?'cv-green':'cv-red');
+
+  document.getElementById('cCO').textContent=fmt(tot.co);
+  document.getElementById('cCOsub').textContent=tot.co>0?'⚠️ terbawa ke hari berikutnya':'✅ tidak ada';
+
+  const p=pct(tot.real,tot.eff);
+  const pctEl=document.getElementById('cPct');
+  pctEl.textContent=p+'%';
+  pctEl.className='card-v '+(p>=100?'cv-green':p>=75?'cv-amber':'cv-red');
+
+  // Table info
+  document.getElementById('tblInfo').textContent=
+    days.length+' hari ('+nWork+' kerja, '+(days.length-nWork)+' libur)';
+
+  // Print title
+  const dtLabel=isSingle?fmtFull(from):fmtShort(from)+' s/d '+fmtShort(to);
+  document.getElementById('printTitle').textContent='Realisasi Korektif Action Rating PLN Mobile – '+dtLabel;
+
+  // Table header
+  const hd=isSingle
+    ?`<tr>
+        <th class="tl">#</th>
+        <th class="tl">UP3</th>
+        <th>Target<br><small>${fmtShort(from)}</small></th>
+        <th>Realisasi</th>
+        <th>Selisih</th>
+        <th>Target<br><small>${fmtShort(nextDay)}</small></th>
+      </tr>`
+    :`<tr>
+        <th class="tl">#</th>
+        <th class="tl">UP3</th>
+        <th>Total Target</th>
+        <th>Total Realisasi</th>
+        <th>Selisih</th>
+        <th>Target+1<br><small>(${fmtShort(nextDay)})</small></th>
+      </tr>`;
+  document.getElementById('mainHead').innerHTML=hd;
+
+  // Table body
+  let html='';
+  rows.forEach((r,idx)=>{
+    const rank=idx+1;
+    const rkCls=rank===1?'r1':rank===2?'r2':rank===3?'r3':'rn';
+    const selCls=r.sel>0?'pos':r.sel<0?'neg':'zer';
+    const achieved=r.real>=r.eff;
+    const rowCls=achieved?'row-ok':'row-ng';
+    html+=`<tr class="${rowCls}">
+      <td class="tl"><span class="rnk ${rkCls}">${rank}</span></td>
+      <td class="tl">${achieved?'✅ ':'❌ '}${r.u}</td>
+      <td>${fmt(r.eff)}</td>
+      <td style="font-weight:700">${fmt(r.real)}</td>
+      <td class="${selCls}">${r.sel>=0?'+':''}${fmt(r.sel)}</td>
+      <td style="font-weight:700">${fmt(r.tgt1)}</td>
+    </tr>`;
+  });
+
+  // Total row
+  const totSelCls=tot.sel>0?'pos':tot.sel<0?'neg':'zer';
+  html+=`<tr class="tot-row">
+    <td class="tl" colspan="2">TOTAL</td>
+    <td>${fmt(tot.eff)}</td>
+    <td>${fmt(tot.real)}</td>
+    <td class="${totSelCls}">${tot.sel>=0?'+':''}${fmt(tot.sel)}</td>
+    <td>${fmt(tot.tgt1)}</td>
+  </tr>`;
+  document.getElementById('mainBody').innerHTML=html;
+
+  // ULP section
+  renderULP(from,to);
+}
+
+function renderULP(from,to){
+  const ulpData=computeULP(from,to);
+  const sec=document.getElementById('ulpSec');
+
+  // Build UP3 list that has ULP data, sorted by total desc
+  const up3WithData=UP3S.filter(u=>ulpData[u]&&Object.keys(ulpData[u]).length>0)
+    .sort((a,b)=>{
+      const ta=Object.values(ulpData[a]).reduce((s,v)=>s+v,0);
+      const tb=Object.values(ulpData[b]).reduce((s,v)=>s+v,0);
+      return tb-ta;
+    });
+
+  // Render filter buttons
+  const filterEl=document.getElementById('ulpFilter');
+  const btns=['SEMUA',...up3WithData].map(u=>{
+    const on=selUlpUp3===u?'on':'';
+    const label=u==='SEMUA'?'Semua UP3':u.replace(/^UP3 /,'');
+    return `<button class="uf-btn ${on}" onclick="setUlpFilter('${u}')">${label}</button>`;
+  }).join('');
+  filterEl.innerHTML=btns;
+
+  // Filter which UP3s to show
+  const toShow=selUlpUp3==='SEMUA'?up3WithData:up3WithData.filter(u=>u===selUlpUp3);
+
+  if(!toShow.length){
+    sec.innerHTML='<div class="msg-box" style="background:var(--card);border:1px solid var(--border);border-radius:9px">Data ULP tidak tersedia untuk periode ini</div>';
+    document.getElementById('ulpInfo').textContent='tidak ada data';
+    return;
+  }
+
+  let html='';
+  for(const u of toShow){
+    const ulps=ulpData[u];
+    const totU=Object.values(ulps).reduce((s,v)=>s+v,0);
+    const sorted=Object.entries(ulps).sort((a,b)=>b[1]-a[1]);
+    const rows=sorted.map(([name,val],i)=>{
+      const rk=i+1;
+      const cls=rk===1?'r1':rk===2?'r2':rk===3?'r3':'rn';
+      return `<tr>
+        <td class="tl"><span class="rnk ${cls}">${rk}</span>${name}</td>
+        <td style="text-align:right;font-weight:700">${fmt(val)}</td>
+        <td style="text-align:right;color:var(--text3)">${totU>0?Math.round(val/totU*100):0}%</td>
+      </tr>`;
+    }).join('');
+    // Auto-open if only one UP3 shown
+    const openCls=toShow.length===1?'open':'';
+    html+=`<div class="ulp-acc">
+      <div class="ulp-hdr" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span class="ulp-hdr-t">${u}</span>
+        <span class="ulp-hdr-i">Total: <b>${fmt(totU)}</b> · ${sorted.length} ULP ▾</span>
+      </div>
+      <div class="ulp-body ${openCls}">
+        <div class="tscroll">
+          <table>
+            <thead><tr>
+              <th class="tl">ULP / Unit</th>
+              <th style="text-align:right">Realisasi</th>
+              <th style="text-align:right">Porsi</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  sec.innerHTML=html;
+  document.getElementById('ulpInfo').textContent=
+    selUlpUp3==='SEMUA'?'pilih UP3 untuk filter':'menampilkan '+selUlpUp3;
+}
+
+function setUlpFilter(up3){
+  selUlpUp3=up3;
+  const from=document.getElementById('dateFrom').value;
+  const to=document.getElementById('dateTo').value;
+  renderULP(from,to);
+}
+
+// ══════════════════════════════════════════════
+//  LOAD DATA
+// ══════════════════════════════════════════════
+function loadData(){
+  S.loaded=false;
+  setStatus('⟳ Mengambil data...');
+  document.getElementById('mainBody').innerHTML=
+    '<tr><td colspan="6"><div class="msg-box"><div class="spin"></div>Mengambil data dari Google Sheets...</div></td></tr>';
+  document.getElementById('ulpSec').innerHTML=
+    '<div class="msg-box" style="background:var(--card);border:1px solid var(--border);border-radius:9px"><div class="spin"></div>Memuat...</div>';
+
+  let res={}, errs=[], pend=2;
+  function done(){
+    pend--;
+    if(pend>0)return;
+    if(errs.length){
+      const m=errs[0].message;
+      setStatus('❌ '+m);
+      document.getElementById('mainBody').innerHTML=
+        '<tr><td colspan="6"><div class="msg-box">⚠️ '+m+'<br><br>Pastikan spreadsheet di-share "Anyone with the link → Viewer" lalu klik Refresh</div></td></tr>';
+      return;
+    }
+    try{
+      parseTargets(res.s01);
+      parseRekap(res.rekap);
+      S.loaded=true;
+      document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('id-ID');
+      const nDays=Object.values(S.rekap).reduce((s,v)=>Math.max(s,Object.keys(v).length),0);
+      setStatus('✅ Data dimuat · '+Object.keys(S.targets).length+' UP3');
+      renderAll();
+      toast('✅ Data berhasil diperbarui');
+    }catch(e){
+      setStatus('❌ '+e.message);
+      document.getElementById('mainBody').innerHTML=
+        '<tr><td colspan="6"><div class="msg-box">❌ Error: '+e.message+'</div></td></tr>';
+    }
+  }
+  fetchGviz('rekap','A1:AT200',j=>{res.rekap=j;done();},e=>{errs.push(e);done();});
+  fetchGviz('01','A1:I19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
+}
+
+// ══════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════
+function doPrint(){
+  window.print();
+}
+
+function doScreenshot(){
+  const el=document.getElementById('captureArea');
+  if(typeof html2canvas==='undefined'){
+    toast('⚠️ html2canvas belum siap, coba lagi');
+    return;
+  }
+  toast('📸 Membuat screenshot...');
+  html2canvas(el,{
+    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card').trim()||'#fff',
+    scale:2, useCORS:true, logging:false
+  }).then(canvas=>{
+    const link=document.createElement('a');
+    const from=document.getElementById('dateFrom').value;
+    const to=document.getElementById('dateTo').value;
+    link.download='rating-plnmobile-'+(from===to?from:from+'_'+to)+'.png';
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+    toast('✅ Screenshot tersimpan!');
+  }).catch(e=>{
+    toast('❌ Screenshot gagal: '+e.message);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  HOLIDAYS
+// ══════════════════════════════════════════════
+function renderHolChips(){
+  const chips=[...S.holidays].sort();
+  document.getElementById('holChips').innerHTML=chips.map(h=>{
+    const d=parseYMD(h);
+    return `<button class="hol-chip" onclick="removeHol('${h}')">${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} ✕</button>`;
+  }).join('');
+}
+function addHol(){
+  const v=document.getElementById('newHol').value;
+  if(!v){toast('Pilih tanggal');return;}
+  if(!S.holidays.includes(v)){
+    S.holidays.push(v);
+    saveHol();
+    renderHolChips();
+    toast('✅ Ditambahkan: '+fmtShort(v));
+    if(S.loaded)renderAll();
+  } else {
+    toast('Sudah ada di daftar');
+  }
+  document.getElementById('newHol').value='';
+}
+function removeHol(ymd){
+  S.holidays=S.holidays.filter(h=>h!==ymd);
+  saveHol();
+  renderHolChips();
+  toast('Dihapus: '+fmtShort(ymd));
+  if(S.loaded)renderAll();
+}
+
+// ══════════════════════════════════════════════
+//  UI
+// ══════════════════════════════════════════════
+function toggleSettings(){
+  const p=document.getElementById('settingsPanel');
+  const open=p.classList.toggle('open');
+  if(open){
+    renderHolChips();
+    document.getElementById('sheetIdActive').textContent=getSheetId();
+    document.getElementById('sheetIdInput').value='';
+  }
+}
+function applySheetId(){
+  const v=document.getElementById('sheetIdInput').value.trim();
+  if(!v){toast('Masukkan Sheet ID terlebih dahulu');return;}
+  // Extract ID from full URL if user pastes the whole URL
+  const m=v.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  const id=m?m[1]:v;
+  saveSheetId(id);
+  document.getElementById('sheetIdActive').textContent=id;
+  document.getElementById('sheetIdInput').value='';
+  toast('Sheet ID disimpan — memuat ulang data…');
+  S.loaded=false;
+  loadData();
+}
+function setToday(){
+  const t=toYMD(new Date());
+  document.getElementById('dateFrom').value=t;
+  document.getElementById('dateTo').value=t;
+  renderAll();
+}
+function setStatus(msg){
+  document.getElementById('statusMsg').textContent=msg;
+}
+let _toast;
+function toast(msg,dur=3000){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('on');
+  clearTimeout(_toast); _toast=setTimeout(()=>el.classList.remove('on'),dur);
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+function init(){
+  const today=toYMD(new Date());
+  document.getElementById('dateFrom').value=today;
+  document.getElementById('dateTo').value=today;
+  document.getElementById('dateFrom').addEventListener('change',renderAll);
+  document.getElementById('dateTo').addEventListener('change',renderAll);
+  loadData();
+}
+init();
+</script>
+</body>
+</html>
