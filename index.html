@@ -670,7 +670,9 @@ function computeRange(fromYmd,toYmd){
 
   // Sort: tercapai (hijau) dahulu, lalu tidak tercapai (merah); dalam grup sort real desc
   rows.sort((a,b)=>{
-    const aOk=a.real>=a.eff, bOk=b.real>=b.eff;
+    const aTgt=a.u==='KANTOR UID JABAR'?a.base:a.eff;
+    const bTgt=b.u==='KANTOR UID JABAR'?b.base:b.eff;
+    const aOk=a.real>=aTgt, bOk=b.real>=bTgt;
     if(aOk!==bOk) return aOk?-1:1;
     return b.real-a.real;
   });
@@ -831,15 +833,19 @@ function renderAll(){
   rows.forEach((r,idx)=>{
     const rank=idx+1;
     const rkCls=rank===1?'r1':rank===2?'r2':rank===3?'r3':'rn';
-    const selCls=r.sel>0?'pos':r.sel<0?'neg':'zer';
-    const achieved=r.real>=r.eff;
+    // KANTOR UID JABAR: flat target (tanpa CO); UP3 lain: effective target (dengan CO)
+    const isKantor=r.u==='KANTOR UID JABAR';
+    const displayTgt=isKantor?r.base:r.eff;
+    const rSel=r.real-displayTgt;
+    const selCls=rSel>0?'pos':rSel<0?'neg':'zer';
+    const achieved=r.real>=displayTgt;
     const rowCls=achieved?'row-ok':'row-ng';
     html+=`<tr class="${rowCls}">
       <td class="tl"><span class="rnk ${rkCls}">${rank}</span></td>
       <td class="tl">${achieved?'✅ ':'❌ '}${r.u}</td>
-      <td>${fmt(r.eff)}</td>
+      <td>${fmt(displayTgt)}</td>
       <td style="font-weight:700">${fmt(r.real)}</td>
-      <td class="${selCls}">${r.sel>=0?'+':''}${fmt(r.sel)}</td>
+      <td class="${selCls}">${rSel>=0?'+':''}${fmt(rSel)}</td>
       <td style="font-weight:700">${fmt(r.tgt1)}</td>
     </tr>`;
   });
