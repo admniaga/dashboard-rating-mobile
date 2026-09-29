@@ -222,22 +222,45 @@ tr.row-ng td.tl{color:var(--red)!important}
 
 <div class="page">
 
+  <!-- PIN OVERLAY -->
+  <div id="pinOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
+    align-items:center;justify-content:center;">
+    <div style="background:var(--card);border-radius:14px;padding:28px 28px 24px;width:280px;
+      box-shadow:0 8px 32px rgba(0,0,0,.4);text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px">🔒</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:4px">Pengaturan Terkunci</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Masukkan PIN untuk melanjutkan</div>
+      <input id="pinInput" type="password" maxlength="20" placeholder="Masukkan PIN…"
+        onkeydown="if(event.key==='Enter')submitPin()"
+        style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;
+        background:var(--bg);color:var(--text);font-size:16px;text-align:center;letter-spacing:4px;
+        outline:none;margin-bottom:8px">
+      <div id="pinError" style="display:none;color:var(--red);font-size:12px;margin-bottom:8px">
+        ❌ PIN salah, coba lagi
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="closePinPrompt()"
+          style="flex:1;background:var(--bg);color:var(--text2);border:1px solid var(--border)">Batal</button>
+        <button class="btn btn-p" onclick="submitPin()" style="flex:1">Masuk</button>
+      </div>
+    </div>
+  </div>
+
   <!-- SETTINGS (collapsible) -->
   <div class="settings" id="settingsPanel">
 
-    <h3>🏢 Target Harian KANTOR UID JABAR</h3>
-    <p class="sinfo" style="margin-bottom:6px">
-      KANTOR UID JABAR tidak ada di sheet "01" → target diset manual di sini.<br>
-      Target bersifat <b>flat</b> (sama setiap hari, tanpa carry-over).
-    </p>
-    <div class="add-row" style="margin-bottom:12px">
-      <label style="font-size:11px;font-weight:600;white-space:nowrap">Target/hari:</label>
-      <input type="number" id="kantorTgtInput" min="0" max="9999" step="1"
-        style="width:100px;font-size:13px;font-weight:700;border:1px solid var(--border);border-radius:6px;
-        padding:5px 10px;background:var(--bg);color:var(--text);text-align:center">
-      <button class="btn btn-blue" onclick="applyKantorTgt()">Simpan</button>
-      <span id="kantorTgtInfo" style="font-size:11px;color:var(--text2)"></span>
+    <!-- Sheet ID setting -->
+    <h3>🔗 Google Spreadsheet ID</h3>
+    <div class="add-row" style="margin-bottom:4px">
+      <input type="text" id="sheetIdInput" placeholder="Paste Sheet ID baru di sini…"
+        style="flex:1;font-size:11px;font-family:monospace;border:1px solid var(--border);
+        border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+      <button class="btn btn-blue" onclick="applySheetId()">Simpan &amp; Muat</button>
     </div>
+    <p class="sinfo" style="margin-bottom:12px">
+      ID ada di URL spreadsheet: <code style="font-size:10px;background:var(--rowalt);padding:1px 4px;border-radius:3px">docs.google.com/spreadsheets/d/<b style="color:var(--acc)">[ID INI]</b>/edit</code><br>
+      ID aktif sekarang: <span id="sheetIdActive" style="font-family:monospace;font-size:10px;color:var(--text2)"></span>
+    </p>
 
     <h3>🎯 Periode Target (kolom sheet "01")</h3>
     <p class="sinfo" style="margin-bottom:6px">
@@ -253,12 +276,9 @@ tr.row-ng td.tl{color:var(--red)!important}
         style="width:130px;font-size:11px;font-family:monospace;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text);text-transform:uppercase">
       <button class="btn btn-blue" onclick="addTP()">+ Tambah Periode</button>
     </div>
-    <p class="sinfo" style="margin-bottom:8px">⚠️ Urutan diurutkan otomatis. Periode terakhir berlaku sampai seterusnya.</p>
-    <button class="btn" onclick="resetTP()" style="background:var(--amberbg);color:var(--amber);border:1px solid var(--amber);font-size:11px;margin-bottom:12px">
-      🔄 Reset ke Periode Default
-    </button>
+    <p class="sinfo" style="margin-bottom:12px">⚠️ Urutan diurutkan otomatis. Periode terakhir berlaku sampai seterusnya.</p>
 
-    <h3>📅 Hari Libur / Tanggal Merah (2026–2027)</h3>
+    <h3>📅 Hari Libur / Tanggal Merah — dianggap sebagai Weekend (target kolom G)</h3>
     <div class="hol-chips" id="holChips"></div>
     <div class="add-row">
       <label style="font-size:11px;font-weight:600">Tambah:</label>
@@ -271,6 +291,16 @@ tr.row-ng td.tl{color:var(--red)!important}
       ℹ️ Sabtu &amp; Minggu + tanggal di atas otomatis pakai target weekend (kolom G).
     </p>
 
+    <h3>🔐 Ubah PIN Pengaturan</h3>
+    <p class="sinfo" style="margin-bottom:8px">PIN digunakan untuk membuka panel pengaturan ini. PIN awal: <b>1234</b> — segera ubah.</p>
+    <div class="add-row" style="flex-wrap:wrap;gap:6px;margin-bottom:4px">
+      <input type="password" id="pinNewInput" placeholder="PIN baru (min 4 karakter)" maxlength="20"
+        style="flex:1;min-width:140px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+      <input type="password" id="pinConfirmInput" placeholder="Konfirmasi PIN baru" maxlength="20"
+        style="flex:1;min-width:140px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+      <button class="btn btn-blue" onclick="changePIN()">Ubah PIN</button>
+    </div>
+    <p class="sinfo">⚠️ PIN disimpan di browser ini. Jika browser direset, PIN kembali ke <b>1234</b>.</p>
   </div>
 
   <!-- SUMMARY CARDS -->
@@ -342,25 +372,14 @@ tr.row-ng td.tl{color:var(--red)!important}
 </div><!-- /page -->
 
 <div class="toast" id="toast"></div>
-<!-- DEBUG PANEL — hapus setelah berhasil -->
-<div id="dbgPanel" style="position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow-y:auto;
-  background:#111c;color:#0f0;font-family:monospace;font-size:11px;padding:8px 12px;z-index:9999;
-  border-top:2px solid #0f0;display:none"></div>
-<button onclick="document.getElementById('dbgPanel').style.display=
-  document.getElementById('dbgPanel').style.display==='none'?'block':'none'"
-  style="position:fixed;bottom:8px;right:8px;z-index:10000;padding:6px 10px;
-  background:#111;color:#0f0;border:1px solid #0f0;border-radius:6px;font-size:12px;cursor:pointer">
-  🛠 Debug
-</button>
 
 <script>
 // ══════════════════════════════════════════════
 //  CONSTANTS
 // ══════════════════════════════════════════════
-const SHEET_ID = "1o60PPGUmsC2X0FVwoVdKuR3ePIMfqRxB0_0Vf0w_rMo";
-// Hapus sheet ID lama dari localStorage jika ada (tidak lagi dipakai)
-try{localStorage.removeItem('rating_sheetid');}catch(e){}
-function getSheetId(){ return SHEET_ID; }
+const SHEET_ID_DEFAULT = "1o60PPGUmsC2X0FVwoVdKuR3ePIMfqRxB0_0Vf0w_rMo";
+function getSheetId(){ try{return localStorage.getItem('rating_sheetid')||SHEET_ID_DEFAULT;}catch(e){return SHEET_ID_DEFAULT;} }
+function saveSheetId(id){ try{localStorage.setItem('rating_sheetid',id.trim());}catch(e){} }
 
 const UP3S = [
   "KANTOR UID JABAR","UP3 CIKARANG","UP3 INDRAMAYU","UP3 SUMEDANG",
@@ -374,29 +393,14 @@ const UP3_SET = new Set(UP3S.map(u => u.toUpperCase()));
 const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 const DAYS   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
 
-// Default holidays 2026 + 2027
+// Default holidays 2026
 const DEF_HOL = [
-  // ── 2026 ──
   "2026-01-01","2026-01-27","2026-01-28","2026-01-29","2026-01-30",
   "2026-03-31","2026-04-01","2026-04-02","2026-04-03",
   "2026-04-15","2026-04-16","2026-05-01","2026-05-13","2026-05-14",
   "2026-05-20","2026-05-22","2026-05-26","2026-06-01",
   "2026-06-03","2026-06-04","2026-08-17","2026-09-11","2026-09-12",
-  "2026-10-28","2026-11-25","2026-12-25",
-  // ── 2027 ──
-  "2027-01-01",  // Tahun Baru Masehi
-  "2027-01-16",  // Tahun Baru Imlek 2578
-  "2027-03-22",  // Isra Mikraj
-  "2027-03-29",  // Hari Raya Nyepi (Saka 1949)
-  "2027-04-28","2027-04-29","2027-04-30",  // Idul Fitri 1448 H + cuti bersama
-  "2027-05-01",  // Hari Buruh
-  "2027-05-07",  // Kenaikan Isa Almasih
-  "2027-05-21",  // Waisak
-  "2027-07-06",  // Idul Adha 1448 H
-  "2027-07-27",  // Tahun Baru Islam 1449 H
-  "2027-08-17",  // HUT RI ke-82
-  "2027-10-05",  // Maulid Nabi SAW
-  "2027-12-25"   // Natal
+  "2026-10-28","2026-11-25","2026-12-25"
 ];
 
 // ══════════════════════════════════════════════
@@ -408,9 +412,8 @@ const S = {
   targets:{},    // { "UP3 BEKASI": [v0,v1,...] }  full row dari sheet 01
   rekap:{},      // { "UP3 BEKASI": { "2026-09-29": N } }
   ulp:{},        // { "UP3 BEKASI": { "ULP BEKASI KOTA": { "2026-09-29": N } } }
-  ulpMaster:{},  // { "UP3 BEKASI": ["ULP BEKASI KOTA", ...] } dari sheet UP3-ULP
+  ulpMaster:{},  // { "UP3 BEKASI": ["ULP BEKASI KOTA", ...] } dari sheet ULP-UP3
   holidays: loadHol(),
-  kantorTgt: loadKantorTgt(),  // Target harian flat KANTOR UID JABAR (tidak ada di sheet 01)
   loaded: false
 };
 
@@ -419,15 +422,6 @@ function loadHol(){
   catch(e){ return DEF_HOL.slice(); }
 }
 function saveHol(){ try{localStorage.setItem('rating_hol',JSON.stringify(S.holidays));}catch(e){} }
-
-// KANTOR UID JABAR — flat target harian (tidak ada di sheet 01)
-const KANTOR_TGT_KEY='rating_kantor_tgt';
-const KANTOR_TGT_DEF=50;
-function loadKantorTgt(){
-  try{const v=localStorage.getItem(KANTOR_TGT_KEY);return v!=null?parseInt(v)||KANTOR_TGT_DEF:KANTOR_TGT_DEF;}
-  catch(e){return KANTOR_TGT_DEF;}
-}
-function saveKantorTgt(v){try{localStorage.setItem(KANTOR_TGT_KEY,String(v));}catch(e){}}
 
 // ══════════════════════════════════════════════
 //  DATE UTILS
@@ -468,46 +462,29 @@ function dayBefore(ymd){
 // ══════════════════════════════════════════════
 //  GVIZ FETCH
 // ══════════════════════════════════════════════
-// ── Debug log panel ──────────────────────────────
-const _dbgLogs=[];
-function dbgLog(icon,msg){
-  _dbgLogs.push(icon+' '+msg);
-  const el=document.getElementById('dbgPanel');
-  if(el) el.innerHTML=_dbgLogs.map(l=>'<div>'+l+'</div>').join('');
-}
-
 function fetchGviz(sheet, range, onData, onErr){
   const cb='gviz_'+Math.floor(Math.random()*1e9);
   let done=false;
   const scr=document.createElement('script');
-  const url='https://docs.google.com/spreadsheets/d/'+getSheetId()+'/gviz/tq'
-    +'?sheet='+encodeURIComponent(sheet)
-    +'&range='+encodeURIComponent(range)
-    +'&headers=0&tqx=out:json;responseHandler:'+cb
-    +'&_ts='+Date.now();
-  dbgLog('⏳','Memuat sheet: <b>'+sheet+'</b>');
   const tmr=setTimeout(()=>{
     if(done)return; done=true; cleanup();
-    dbgLog('⏱','TIMEOUT — sheet: <b>'+sheet+'</b> (8 detik tidak ada respons)');
     onErr(new Error('Timeout sheet: '+sheet));
-  },8000);
+  },25000);
   function cleanup(){
     clearTimeout(tmr);
     try{delete window[cb];}catch(e){window[cb]=undefined;}
     if(scr.parentNode)scr.parentNode.removeChild(scr);
   }
-  window[cb]=json=>{
-    if(done)return; done=true; cleanup();
-    const rows=(json&&json.table&&json.table.rows)||[];
-    dbgLog('✅','OK — sheet: <b>'+sheet+'</b> ('+rows.length+' baris)');
-    onData(json);
-  };
+  window[cb]=json=>{ if(done)return; done=true; cleanup(); onData(json); };
   scr.onerror=()=>{
     if(done)return; done=true; cleanup();
-    dbgLog('❌','ERROR — sheet: <b>'+sheet+'</b> (script gagal dimuat)');
     onErr(new Error('Gagal memuat "'+sheet+'" — pastikan share "Anyone with the link"'));
   };
-  scr.src=url;
+  scr.src='https://docs.google.com/spreadsheets/d/'+getSheetId()+'/gviz/tq'
+    +'?sheet='+encodeURIComponent(sheet)
+    +'&range='+encodeURIComponent(range)
+    +'&headers=0&tqx=out:json;responseHandler:'+cb
+    +'&_ts='+Date.now();
   document.body.appendChild(scr);
 }
 
@@ -545,15 +522,11 @@ function gDateCell(c){
 //  Kolom: A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,...
 // ══════════════════════════════════════════════
 const TP_DEFAULT=[
-  {from:null,         to:'2026-09-20', weIdx:3,  wdIdx:4,  resetCO:false},  // s.d. 20 Sep : kol D/E
-  {from:'2026-09-21', to:'2026-09-29', weIdx:6,  wdIdx:7,  resetCO:false},  // 21-29 Sep   : kol G/H boost 20%
-  {from:'2026-09-30', to:null,         weIdx:10, wdIdx:11, resetCO:true }   // 30 Sep+     : kol K/L, CO RESET
+  {from:null,    to:'2026-09-20', weIdx:3, wdIdx:4},  // s.d. 20 Sep: col D(we) E(wd) "baru"
+  {from:'2026-09-21', to:null,   weIdx:6, wdIdx:7}   // 21 Sep+: col G(we) H(wd) boost 20%
 ];
 function loadTP(){
-  try{
-    const s=localStorage.getItem('rating_tp');
-    if(s){const p=JSON.parse(s);if(Array.isArray(p)&&p.length>0)return p;}
-  }catch(e){}
+  try{const s=localStorage.getItem('rating_tp');if(s)return JSON.parse(s);}catch(e){}
   return JSON.parse(JSON.stringify(TP_DEFAULT));
 }
 function saveTP(arr){try{localStorage.setItem('rating_tp',JSON.stringify(arr));}catch(e){}}
@@ -585,8 +558,6 @@ function parseTargets(gviz){
 }
 
 function baseTgt(up3,ymd){
-  // KANTOR UID JABAR: tidak ada di sheet 01, pakai target flat harian
-  if(up3==='KANTOR UID JABAR') return S.kantorTgt;
   const vals=S.targets[up3]||[];
   const p=getTP(ymd);
   const we=vals[p.weIdx]||0;
@@ -595,60 +566,46 @@ function baseTgt(up3,ymd){
 }
 
 // ══════════════════════════════════════════════
-//  PARSE REKAP (format PANJANG / long format)
-//  Sheet rekap: 3 kolom = Nama(UP3) | Tanggal | Realisasi
-//  Diisi otomatis via QUERY dari Form_Responses
+//  PARSE REKAP
+//  Row0: [name, date1, date2, ...]
+//  Rows: UP3 rows, then ULP rows under UP3
 // ══════════════════════════════════════════════
 function parseRekap(gviz){
-  S.rekap={};
+  S.rekap={}; S.ulp={};
   if(!gviz||!gviz.table)return;
   const rows=gviz.table.rows;
-  if(!rows||rows.length<1)return;
-  for(let r=0;r<rows.length;r++){
-    const row=rows[r];
-    const cs=row.c||[];
-    // Kolom 0: Nama UP3
-    const raw0=cs[0];
-    const name=raw0?(raw0.f!=null?String(raw0.f):raw0.v!=null?String(raw0.v):''):'';
-    const nameUC=name.trim().toUpperCase();
-    if(!nameUC)continue;
-    // Kolom 1: Tanggal
-    const ymd=gDateCell(cs[1]);
-    if(!ymd)continue;
-    // Kolom 2: Realisasi (COUNT)
-    const val=parseInt(gVal(row,2))||0;
-    if(!val)continue;
-    if(!S.rekap[nameUC])S.rekap[nameUC]={};
-    S.rekap[nameUC][ymd]=(S.rekap[nameUC][ymd]||0)+val;
-  }
-}
+  if(!rows||rows.length<2)return;
 
-// ══════════════════════════════════════════════
-//  PARSE REKAP ULP (format PANJANG)
-//  Sheet rekap_ulp: 4 kolom = UP3 | ULP | Tanggal | Realisasi
-//  Diisi otomatis via QUERY dari Form_Responses
-// ══════════════════════════════════════════════
-function parseRekapUlp(gviz){
-  S.ulp={};
-  if(!gviz||!gviz.table)return;
-  const rows=gviz.table.rows;
-  if(!rows||rows.length<1)return;
-  for(let r=0;r<rows.length;r++){
+  // Parse date columns from header
+  const hdr=rows[0];
+  const dateCols=[];
+  for(let i=1;i<(hdr.c||[]).length;i++){
+    const ymd=gDateCell((hdr.c||[])[i]);
+    if(ymd)dateCols.push({i,ymd});
+  }
+
+  let curUp3=null;
+  for(let r=1;r<rows.length;r++){
     const row=rows[r];
-    const cs=row.c||[];
-    const raw0=cs[0], raw1=cs[1];
-    const up3=raw0?(raw0.f!=null?String(raw0.f):raw0.v!=null?String(raw0.v):''):'';
-    const ulp=raw1?(raw1.f!=null?String(raw1.f):raw1.v!=null?String(raw1.v):''):'';
-    const up3UC=up3.trim().toUpperCase();
-    const ulpUC=ulp.trim().toUpperCase();
-    if(!up3UC||!ulpUC)continue;
-    const ymd=gDateCell(cs[2]);
-    if(!ymd)continue;
-    const val=parseInt(gVal(row,3))||0;
-    if(!val)continue;
-    if(!S.ulp[up3UC])S.ulp[up3UC]={};
-    if(!S.ulp[up3UC][ulpUC])S.ulp[up3UC][ulpUC]={};
-    S.ulp[up3UC][ulpUC][ymd]=(S.ulp[up3UC][ulpUC][ymd]||0)+val;
+    const name=gStr(row,0).toUpperCase();
+    if(!name)continue;
+    const isUp3=UP3_SET.has(name);
+    if(isUp3){
+      curUp3=name;
+      if(!S.rekap[name])S.rekap[name]={};
+    }
+
+    for(const {i,ymd} of dateCols){
+      const v=parseInt(gVal(row,i))||0;
+      if(!v)continue;
+      if(isUp3){
+        S.rekap[name][ymd]=(S.rekap[name][ymd]||0)+v;
+      } else if(curUp3){
+        if(!S.ulp[curUp3])S.ulp[curUp3]={};
+        if(!S.ulp[curUp3][name])S.ulp[curUp3][name]={};
+        S.ulp[curUp3][name][ymd]=(S.ulp[curUp3][name][ymd]||0)+v;
+      }
+    }
   }
 }
 
@@ -668,29 +625,15 @@ function computeRange(fromYmd,toYmd){
   for(const u of UP3S) runCO[u]=0;
 
   // Warm up CO chain from month start to day before fromYmd
-  let prevPeriod=null;
   if(monthStart<fromYmd){
     for(const ymd of datesBetween(monthStart,dayBefore(fromYmd))){
-      // Jika masuk periode baru dengan resetCO:true → semua CO kembali 0
-      const curPeriod=getTP(ymd);
-      if(curPeriod!==prevPeriod && curPeriod.resetCO){
-        for(const u of UP3S) runCO[u]=0;
-      }
-      prevPeriod=curPeriod;
       for(const u of UP3S){
         const base=baseTgt(u,ymd);
         const eff=base+runCO[u];
         const real=(S.rekap[u]&&S.rekap[u][ymd])||0;
-        // KANTOR UID JABAR: target flat, tidak ada carry-over
-        runCO[u]=u==='KANTOR UID JABAR'?0:Math.max(0,eff-real);
+        runCO[u]=Math.max(0,eff-real);
       }
     }
-  }
-
-  // Cek juga saat masuk range utama
-  const curPeriodFrom=getTP(fromYmd);
-  if(curPeriodFrom!==prevPeriod && curPeriodFrom.resetCO){
-    for(const u of UP3S) runCO[u]=0;
   }
 
   const days=datesBetween(fromYmd,toYmd);
@@ -708,8 +651,7 @@ function computeRange(fromYmd,toYmd){
       totEff[u]+=eff;
       totReal[u]+=real;
       // Carry-over: kurang → bawa, cukup/lebih → 0
-      // KANTOR UID JABAR: target flat, tidak ada carry-over
-      runCO[u]=u==='KANTOR UID JABAR'?0:Math.max(0,eff-real);
+      runCO[u]=Math.max(0,eff-real);
     }
   }
 
@@ -745,7 +687,7 @@ function computeRange(fromYmd,toYmd){
   return {rows,tot,days,nextDay};
 }
 
-// ULP MASTER — parse dari sheet UP3-ULP
+// ULP MASTER — parse dari sheet ULP-UP3
 // Diasumsikan: col A = nama UP3, col B = nama ULP
 function parseUlpMaster(gviz){
   S.ulpMaster={};
@@ -1021,13 +963,11 @@ function loadData(){
   document.getElementById('ulpSec').innerHTML=
     '<div class="msg-box" style="background:var(--card);border:1px solid var(--border);border-radius:9px"><div class="spin"></div>Memuat...</div>';
 
-  // Hanya 2 sheet KRITIS yang blokir render (rekap_new + 01).
-  // Sheet bonus (rekap_ulp, UP3-ULP) diambil paralel; kalau gagal/tidak ada, tidak blokir.
-  let res={}, errs=[], pend=2;
+  let res={}, errs=[], pend=3;
   function done(){
     pend--;
     if(pend>0)return;
-    if(errs.length>=2){
+    if(errs.length&&errs.length>=2){
       const m=errs[0].message;
       setStatus('❌ '+m);
       document.getElementById('mainBody').innerHTML=
@@ -1037,10 +977,10 @@ function loadData(){
     try{
       parseTargets(res.s01);
       parseRekap(res.rekap);
-      if(res.rekapulp)parseRekapUlp(res.rekapulp);
       if(res.ulpup3)parseUlpMaster(res.ulpup3);
       S.loaded=true;
       document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('id-ID');
+      const nDays=Object.values(S.rekap).reduce((s,v)=>Math.max(s,Object.keys(v).length),0);
       setStatus('✅ Data dimuat · '+Object.keys(S.targets).length+' UP3');
       renderAll();
       toast('✅ Data berhasil diperbarui');
@@ -1050,14 +990,9 @@ function loadData(){
         '<tr><td colspan="6"><div class="msg-box">❌ Error: '+e.message+'</div></td></tr>';
     }
   }
-
-  // KRITIS — blokir render
-  fetchGviz('rekap_new','A:C',j=>{res.rekap=j;done();},e=>{errs.push(e);done();});
-  fetchGviz('01','A1:L19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
-
-  // BONUS — tidak blokir; kalau sheet belum ada/tidak ada → abaikan
-  fetchGviz('rekap_ulp','A:D',j=>{res.rekapulp=j;if(S.loaded){parseRekapUlp(j);renderAll();}},e=>{});
-  fetchGviz('UP3-ULP','A1:B200',j=>{res.ulpup3=j;if(S.loaded){parseUlpMaster(j);renderAll();}},e=>{});
+  fetchGviz('rekap','A1:AT200',j=>{res.rekap=j;done();},e=>{errs.push(e);done();});
+  fetchGviz('01','A1:I19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
+  fetchGviz('ULP-UP3','A1:B200',j=>{res.ulpup3=j;done();},e=>{errs.push(e);done();}); // master ULP
 }
 
 // ══════════════════════════════════════════════
@@ -1133,9 +1068,8 @@ function renderTPList(){
   el.innerHTML=sorted.map((p,i)=>{
     const f=p.from||'Awal';
     const t=p.to||'Seterusnya';
-    const resetBadge=p.resetCO?`<span style="background:var(--amberbg);color:var(--amber);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">CO RESET</span>`:'';
     return `<div style="display:flex;align-items:center;gap:8px;background:var(--rowalt);border-radius:6px;padding:5px 10px;font-size:11px">
-      <span style="flex:1"><b>${f}</b> s.d. <b>${t}</b> — Weekend: <code>Kol ${colLetter(p.weIdx)}</code>, Weekday: <code>Kol ${colLetter(p.wdIdx)}</code> ${resetBadge}</span>
+      <span style="flex:1"><b>${f}</b> s.d. <b>${t}</b> — Weekend: <code>Kol ${colLetter(p.weIdx)}</code>, Weekday: <code>Kol ${colLetter(p.wdIdx)}</code></span>
       <button onclick="delTP(${i})" style="border:none;background:var(--redbg);color:var(--red);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px">Hapus</button>
     </div>`;
   }).join('');
@@ -1167,47 +1101,92 @@ function delTP(i){
   toast('Periode dihapus');
 }
 
+/* ── SETTINGS PIN ── */
+const SETTINGS_PIN_KEY='rating_settings_pin';
+const SETTINGS_PIN_DEFAULT='1234'; // PIN awal, bisa diubah di settings
+let settingsUnlocked=false;
+
+function getSettingsPin(){
+  try{return localStorage.getItem(SETTINGS_PIN_KEY)||SETTINGS_PIN_DEFAULT;}catch(e){return SETTINGS_PIN_DEFAULT;}
+}
+function saveSettingsPin(pin){
+  try{localStorage.setItem(SETTINGS_PIN_KEY,pin);}catch(e){}
+}
+
 function toggleSettings(){
-  const p=document.getElementById('settingsPanel');
-  if(p.classList.contains('open')){
-    p.classList.remove('open');
-  } else {
+  if(settingsUnlocked){
+    // Jika sudah unlock, toggle close
+    const p=document.getElementById('settingsPanel');
+    if(p.classList.contains('open')){
+      p.classList.remove('open');
+      settingsUnlocked=false;
+    } else {
+      openSettingsPanel();
+    }
+    return;
+  }
+  // Belum unlock — tampilkan prompt PIN
+  showPinPrompt();
+}
+
+function showPinPrompt(){
+  document.getElementById('pinOverlay').style.display='flex';
+  document.getElementById('pinInput').value='';
+  setTimeout(()=>document.getElementById('pinInput').focus(),100);
+}
+
+function closePinPrompt(){
+  document.getElementById('pinOverlay').style.display='none';
+}
+
+function submitPin(){
+  const entered=document.getElementById('pinInput').value.trim();
+  if(entered===getSettingsPin()){
+    settingsUnlocked=true;
+    closePinPrompt();
     openSettingsPanel();
+  } else {
+    document.getElementById('pinError').style.display='block';
+    document.getElementById('pinInput').value='';
+    document.getElementById('pinInput').focus();
+    setTimeout(()=>document.getElementById('pinError').style.display='none',2000);
   }
 }
 
 function openSettingsPanel(){
   const p=document.getElementById('settingsPanel');
   p.classList.add('open');
-  // Auto-recover: kalau TARGET_PERIODS kosong (localStorage corrupt), reset ke default
-  if(!TARGET_PERIODS||!TARGET_PERIODS.length){
-    TARGET_PERIODS=JSON.parse(JSON.stringify(TP_DEFAULT));
-    saveTP(TARGET_PERIODS);
-  }
   renderHolChips();
   renderTPList();
-  document.getElementById('kantorTgtInput').value=S.kantorTgt;
-  document.getElementById('kantorTgtInfo').textContent='Saat ini: '+S.kantorTgt+'/hari';
+  document.getElementById('sheetIdActive').textContent=getSheetId();
+  document.getElementById('sheetIdInput').value='';
+  document.getElementById('pinNewInput').value='';
+  document.getElementById('pinConfirmInput').value='';
 }
 
-function resetTP(){
-  if(!confirm('Reset semua periode ke pengaturan default?\n\nPeriode default:\n• s.d. 20 Sep 2026: kol D/E\n• 21-29 Sep 2026: kol G/H\n• 30 Sep 2026+: kol K/L [CO RESET ke 0]'))return;
-  TARGET_PERIODS=JSON.parse(JSON.stringify(TP_DEFAULT));
-  saveTP(TARGET_PERIODS);
-  renderTPList();
-  toast('✅ Periode direset ke default');
-  if(S.loaded)renderAll();
+function changePIN(){
+  const np=document.getElementById('pinNewInput').value.trim();
+  const cp=document.getElementById('pinConfirmInput').value.trim();
+  if(!np||np.length<4){toast('PIN minimal 4 karakter');return;}
+  if(np!==cp){toast('Konfirmasi PIN tidak cocok');return;}
+  saveSettingsPin(np);
+  document.getElementById('pinNewInput').value='';
+  document.getElementById('pinConfirmInput').value='';
+  toast('PIN berhasil diubah');
 }
-function applyKantorTgt(){
-  const v=parseInt(document.getElementById('kantorTgtInput').value)||0;
-  if(v<0){toast('Target harus ≥ 0');return;}
-  S.kantorTgt=v;
-  saveKantorTgt(v);
-  document.getElementById('kantorTgtInfo').textContent='Saat ini: '+v+'/hari';
-  toast('✅ Target KANTOR UID JABAR: '+v+'/hari');
-  if(S.loaded)renderAll();
+function applySheetId(){
+  const v=document.getElementById('sheetIdInput').value.trim();
+  if(!v){toast('Masukkan Sheet ID terlebih dahulu');return;}
+  // Extract ID from full URL if user pastes the whole URL
+  const m=v.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  const id=m?m[1]:v;
+  saveSheetId(id);
+  document.getElementById('sheetIdActive').textContent=id;
+  document.getElementById('sheetIdInput').value='';
+  toast('Sheet ID disimpan — memuat ulang data…');
+  S.loaded=false;
+  loadData();
 }
-
 function setToday(){
   const t=toYMD(new Date());
   document.getElementById('dateFrom').value=t;
