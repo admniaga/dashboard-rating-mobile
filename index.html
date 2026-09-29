@@ -535,7 +535,10 @@ const TP_DEFAULT=[
   {from:'2026-09-30', to:null,         weIdx:10, wdIdx:11, resetCO:true }   // 30 Sep+     : kol K/L, CO RESET
 ];
 function loadTP(){
-  try{const s=localStorage.getItem('rating_tp');if(s)return JSON.parse(s);}catch(e){}
+  try{
+    const s=localStorage.getItem('rating_tp');
+    if(s){const p=JSON.parse(s);if(Array.isArray(p)&&p.length>0)return p;}
+  }catch(e){}
   return JSON.parse(JSON.stringify(TP_DEFAULT));
 }
 function saveTP(arr){try{localStorage.setItem('rating_tp',JSON.stringify(arr));}catch(e){}}
@@ -1035,6 +1038,9 @@ function loadData(){
   fetchGviz('rekap_ulp','A:D',j=>{res.rekapulp=j;done();},e=>{done();}); // ULP rekap — gagal = S.ulp kosong, tidak error
   fetchGviz('01','A1:I19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
   fetchGviz('ULP-UP3','A1:B200',j=>{res.ulpup3=j;done();},e=>{errs.push(e);done();}); // master ULP
+
+  // Safety: paksa selesai setelah 12 detik jika ada fetch yang tidak terpanggil
+  setTimeout(()=>{ while(pend>0){errs.push(new Error('Timeout (global)'));done();} },12000);
 }
 
 // ══════════════════════════════════════════════
