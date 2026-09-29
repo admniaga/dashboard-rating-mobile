@@ -225,19 +225,6 @@ tr.row-ng td.tl{color:var(--red)!important}
   <!-- SETTINGS (collapsible) -->
   <div class="settings" id="settingsPanel">
 
-    <!-- Sheet ID setting -->
-    <h3>🔗 Google Spreadsheet ID</h3>
-    <div class="add-row" style="margin-bottom:4px">
-      <input type="text" id="sheetIdInput" placeholder="Paste Sheet ID baru di sini…"
-        style="flex:1;font-size:11px;font-family:monospace;border:1px solid var(--border);
-        border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
-      <button class="btn btn-blue" onclick="applySheetId()">Simpan &amp; Muat</button>
-    </div>
-    <p class="sinfo" style="margin-bottom:12px">
-      ID ada di URL spreadsheet: <code style="font-size:10px;background:var(--rowalt);padding:1px 4px;border-radius:3px">docs.google.com/spreadsheets/d/<b style="color:var(--acc)">[ID INI]</b>/edit</code><br>
-      ID aktif sekarang: <span id="sheetIdActive" style="font-family:monospace;font-size:10px;color:var(--text2)"></span>
-    </p>
-
     <h3>🏢 Target Harian KANTOR UID JABAR</h3>
     <p class="sinfo" style="margin-bottom:6px">
       KANTOR UID JABAR tidak ada di sheet "01" → target diset manual di sini.<br>
@@ -1171,8 +1158,6 @@ function openSettingsPanel(){
   }
   renderHolChips();
   renderTPList();
-  document.getElementById('sheetIdActive').textContent=getSheetId();
-  document.getElementById('sheetIdInput').value='';
   document.getElementById('kantorTgtInput').value=S.kantorTgt;
   document.getElementById('kantorTgtInfo').textContent='Saat ini: '+S.kantorTgt+'/hari';
 }
