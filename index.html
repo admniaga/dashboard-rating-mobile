@@ -347,9 +347,10 @@ tr.row-ng td.tl{color:var(--red)!important}
 // ══════════════════════════════════════════════
 //  CONSTANTS
 // ══════════════════════════════════════════════
-const SHEET_ID_DEFAULT = "1o60PPGUmsC2X0FVwoVdKuR3ePIMfqRxB0_0Vf0w_rMo";
-function getSheetId(){ try{return localStorage.getItem('rating_sheetid')||SHEET_ID_DEFAULT;}catch(e){return SHEET_ID_DEFAULT;} }
-function saveSheetId(id){ try{localStorage.setItem('rating_sheetid',id.trim());}catch(e){} }
+const SHEET_ID = "1o60PPGUmsC2X0FVwoVdKuR3ePIMfqRxB0_0Vf0w_rMo";
+// Hapus sheet ID lama dari localStorage jika ada (tidak lagi dipakai)
+try{localStorage.removeItem('rating_sheetid');}catch(e){}
+function getSheetId(){ return SHEET_ID; }
 
 const UP3S = [
   "KANTOR UID JABAR","UP3 CIKARANG","UP3 INDRAMAYU","UP3 SUMEDANG",
@@ -397,7 +398,7 @@ const S = {
   targets:{},    // { "UP3 BEKASI": [v0,v1,...] }  full row dari sheet 01
   rekap:{},      // { "UP3 BEKASI": { "2026-09-29": N } }
   ulp:{},        // { "UP3 BEKASI": { "ULP BEKASI KOTA": { "2026-09-29": N } } }
-  ulpMaster:{},  // { "UP3 BEKASI": ["ULP BEKASI KOTA", ...] } dari sheet ULP-UP3
+  ulpMaster:{},  // { "UP3 BEKASI": ["ULP BEKASI KOTA", ...] } dari sheet UP3-ULP
   holidays: loadHol(),
   kantorTgt: loadKantorTgt(),  // Target harian flat KANTOR UID JABAR (tidak ada di sheet 01)
   loaded: false
@@ -461,8 +462,15 @@ function fetchGviz(sheet, range, onData, onErr){
   const cb='gviz_'+Math.floor(Math.random()*1e9);
   let done=false;
   const scr=document.createElement('script');
+  const url='https://docs.google.com/spreadsheets/d/'+getSheetId()+'/gviz/tq'
+    +'?sheet='+encodeURIComponent(sheet)
+    +'&range='+encodeURIComponent(range)
+    +'&headers=0&tqx=out:json;responseHandler:'+cb
+    +'&_ts='+Date.now();
+  console.log('[gviz] fetch →', sheet, range, url);
   const tmr=setTimeout(()=>{
     if(done)return; done=true; cleanup();
+    console.warn('[gviz] TIMEOUT →', sheet);
     onErr(new Error('Timeout sheet: '+sheet));
   },8000);
   function cleanup(){
@@ -470,16 +478,17 @@ function fetchGviz(sheet, range, onData, onErr){
     try{delete window[cb];}catch(e){window[cb]=undefined;}
     if(scr.parentNode)scr.parentNode.removeChild(scr);
   }
-  window[cb]=json=>{ if(done)return; done=true; cleanup(); onData(json); };
+  window[cb]=json=>{
+    if(done)return; done=true; cleanup();
+    console.log('[gviz] OK →', sheet, json);
+    onData(json);
+  };
   scr.onerror=()=>{
     if(done)return; done=true; cleanup();
+    console.error('[gviz] onerror →', sheet);
     onErr(new Error('Gagal memuat "'+sheet+'" — pastikan share "Anyone with the link"'));
   };
-  scr.src='https://docs.google.com/spreadsheets/d/'+getSheetId()+'/gviz/tq'
-    +'?sheet='+encodeURIComponent(sheet)
-    +'&range='+encodeURIComponent(range)
-    +'&headers=0&tqx=out:json;responseHandler:'+cb
-    +'&_ts='+Date.now();
+  scr.src=url;
   document.body.appendChild(scr);
 }
 
@@ -717,7 +726,7 @@ function computeRange(fromYmd,toYmd){
   return {rows,tot,days,nextDay};
 }
 
-// ULP MASTER — parse dari sheet ULP-UP3
+// ULP MASTER — parse dari sheet UP3-ULP
 // Diasumsikan: col A = nama UP3, col B = nama ULP
 function parseUlpMaster(gviz){
   S.ulpMaster={};
@@ -994,7 +1003,7 @@ function loadData(){
     '<div class="msg-box" style="background:var(--card);border:1px solid var(--border);border-radius:9px"><div class="spin"></div>Memuat...</div>';
 
   // Hanya 2 sheet KRITIS yang blokir render (rekap_new + 01).
-  // Sheet bonus (rekap_ulp, ULP-UP3) diambil paralel; kalau gagal/tidak ada, tidak blokir.
+  // Sheet bonus (rekap_ulp, UP3-ULP) diambil paralel; kalau gagal/tidak ada, tidak blokir.
   let res={}, errs=[], pend=2;
   function done(){
     pend--;
@@ -1025,11 +1034,11 @@ function loadData(){
 
   // KRITIS — blokir render
   fetchGviz('rekap_new','A:C',j=>{res.rekap=j;done();},e=>{errs.push(e);done();});
-  fetchGviz('01','A1:I19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
+  fetchGviz('01','A1:L19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
 
   // BONUS — tidak blokir; kalau sheet belum ada/tidak ada → abaikan
   fetchGviz('rekap_ulp','A:D',j=>{res.rekapulp=j;if(S.loaded){parseRekapUlp(j);renderAll();}},e=>{});
-  fetchGviz('ULP-UP3','A1:B200',j=>{res.ulpup3=j;if(S.loaded){parseUlpMaster(j);renderAll();}},e=>{});
+  fetchGviz('UP3-ULP','A1:B200',j=>{res.ulpup3=j;if(S.loaded){parseUlpMaster(j);renderAll();}},e=>{});
 }
 
 // ══════════════════════════════════════════════
@@ -1179,19 +1188,7 @@ function applyKantorTgt(){
   toast('✅ Target KANTOR UID JABAR: '+v+'/hari');
   if(S.loaded)renderAll();
 }
-function applySheetId(){
-  const v=document.getElementById('sheetIdInput').value.trim();
-  if(!v){toast('Masukkan Sheet ID terlebih dahulu');return;}
-  // Extract ID from full URL if user pastes the whole URL
-  const m=v.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  const id=m?m[1]:v;
-  saveSheetId(id);
-  document.getElementById('sheetIdActive').textContent=id;
-  document.getElementById('sheetIdInput').value='';
-  toast('Sheet ID disimpan — memuat ulang data…');
-  S.loaded=false;
-  loadData();
-}
+
 function setToday(){
   const t=toYMD(new Date());
   document.getElementById('dateFrom').value=t;
