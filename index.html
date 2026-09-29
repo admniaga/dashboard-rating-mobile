@@ -1006,11 +1006,13 @@ function loadData(){
   document.getElementById('ulpSec').innerHTML=
     '<div class="msg-box" style="background:var(--card);border:1px solid var(--border);border-radius:9px"><div class="spin"></div>Memuat...</div>';
 
-  let res={}, errs=[], pend=4;
+  // Hanya 2 sheet KRITIS yang blokir render (rekap_new + 01).
+  // Sheet bonus (rekap_ulp, ULP-UP3) diambil paralel; kalau gagal/tidak ada, tidak blokir.
+  let res={}, errs=[], pend=2;
   function done(){
     pend--;
     if(pend>0)return;
-    if(errs.length&&errs.length>=2){
+    if(errs.length>=2){
       const m=errs[0].message;
       setStatus('❌ '+m);
       document.getElementById('mainBody').innerHTML=
@@ -1024,7 +1026,6 @@ function loadData(){
       if(res.ulpup3)parseUlpMaster(res.ulpup3);
       S.loaded=true;
       document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('id-ID');
-      const nDays=Object.values(S.rekap).reduce((s,v)=>Math.max(s,Object.keys(v).length),0);
       setStatus('✅ Data dimuat · '+Object.keys(S.targets).length+' UP3');
       renderAll();
       toast('✅ Data berhasil diperbarui');
@@ -1034,13 +1035,14 @@ function loadData(){
         '<tr><td colspan="6"><div class="msg-box">❌ Error: '+e.message+'</div></td></tr>';
     }
   }
-  fetchGviz('rekap_new','A:C',j=>{res.rekap=j;done();},e=>{errs.push(e);done();});
-  fetchGviz('rekap_ulp','A:D',j=>{res.rekapulp=j;done();},e=>{done();}); // ULP rekap — gagal = S.ulp kosong, tidak error
-  fetchGviz('01','A1:I19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
-  fetchGviz('ULP-UP3','A1:B200',j=>{res.ulpup3=j;done();},e=>{errs.push(e);done();}); // master ULP
 
-  // Safety: paksa selesai setelah 12 detik jika ada fetch yang tidak terpanggil
-  setTimeout(()=>{ while(pend>0){errs.push(new Error('Timeout (global)'));done();} },12000);
+  // KRITIS — blokir render
+  fetchGviz('rekap_new','A:C',j=>{res.rekap=j;done();},e=>{errs.push(e);done();});
+  fetchGviz('01','A1:I19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
+
+  // BONUS — tidak blokir; kalau sheet belum ada/tidak ada → abaikan
+  fetchGviz('rekap_ulp','A:D',j=>{res.rekapulp=j;if(S.loaded){parseRekapUlp(j);renderAll();}},e=>{});
+  fetchGviz('ULP-UP3','A1:B200',j=>{res.ulpup3=j;if(S.loaded){parseUlpMaster(j);renderAll();}},e=>{});
 }
 
 // ══════════════════════════════════════════════
@@ -1162,6 +1164,11 @@ function toggleSettings(){
 function openSettingsPanel(){
   const p=document.getElementById('settingsPanel');
   p.classList.add('open');
+  // Auto-recover: kalau TARGET_PERIODS kosong (localStorage corrupt), reset ke default
+  if(!TARGET_PERIODS||!TARGET_PERIODS.length){
+    TARGET_PERIODS=JSON.parse(JSON.stringify(TP_DEFAULT));
+    saveTP(TARGET_PERIODS);
+  }
   renderHolChips();
   renderTPList();
   document.getElementById('sheetIdActive').textContent=getSheetId();
