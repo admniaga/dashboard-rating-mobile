@@ -342,6 +342,16 @@ tr.row-ng td.tl{color:var(--red)!important}
 </div><!-- /page -->
 
 <div class="toast" id="toast"></div>
+<!-- DEBUG PANEL — hapus setelah berhasil -->
+<div id="dbgPanel" style="position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow-y:auto;
+  background:#111c;color:#0f0;font-family:monospace;font-size:11px;padding:8px 12px;z-index:9999;
+  border-top:2px solid #0f0;display:none"></div>
+<button onclick="document.getElementById('dbgPanel').style.display=
+  document.getElementById('dbgPanel').style.display==='none'?'block':'none'"
+  style="position:fixed;bottom:8px;right:8px;z-index:10000;padding:6px 10px;
+  background:#111;color:#0f0;border:1px solid #0f0;border-radius:6px;font-size:12px;cursor:pointer">
+  🛠 Debug
+</button>
 
 <script>
 // ══════════════════════════════════════════════
@@ -458,6 +468,14 @@ function dayBefore(ymd){
 // ══════════════════════════════════════════════
 //  GVIZ FETCH
 // ══════════════════════════════════════════════
+// ── Debug log panel ──────────────────────────────
+const _dbgLogs=[];
+function dbgLog(icon,msg){
+  _dbgLogs.push(icon+' '+msg);
+  const el=document.getElementById('dbgPanel');
+  if(el) el.innerHTML=_dbgLogs.map(l=>'<div>'+l+'</div>').join('');
+}
+
 function fetchGviz(sheet, range, onData, onErr){
   const cb='gviz_'+Math.floor(Math.random()*1e9);
   let done=false;
@@ -467,10 +485,10 @@ function fetchGviz(sheet, range, onData, onErr){
     +'&range='+encodeURIComponent(range)
     +'&headers=0&tqx=out:json;responseHandler:'+cb
     +'&_ts='+Date.now();
-  console.log('[gviz] fetch →', sheet, range, url);
+  dbgLog('⏳','Memuat sheet: <b>'+sheet+'</b>');
   const tmr=setTimeout(()=>{
     if(done)return; done=true; cleanup();
-    console.warn('[gviz] TIMEOUT →', sheet);
+    dbgLog('⏱','TIMEOUT — sheet: <b>'+sheet+'</b> (8 detik tidak ada respons)');
     onErr(new Error('Timeout sheet: '+sheet));
   },8000);
   function cleanup(){
@@ -480,12 +498,13 @@ function fetchGviz(sheet, range, onData, onErr){
   }
   window[cb]=json=>{
     if(done)return; done=true; cleanup();
-    console.log('[gviz] OK →', sheet, json);
+    const rows=(json&&json.table&&json.table.rows)||[];
+    dbgLog('✅','OK — sheet: <b>'+sheet+'</b> ('+rows.length+' baris)');
     onData(json);
   };
   scr.onerror=()=>{
     if(done)return; done=true; cleanup();
-    console.error('[gviz] onerror →', sheet);
+    dbgLog('❌','ERROR — sheet: <b>'+sheet+'</b> (script gagal dimuat)');
     onErr(new Error('Gagal memuat "'+sheet+'" — pastikan share "Anyone with the link"'));
   };
   scr.src=url;
