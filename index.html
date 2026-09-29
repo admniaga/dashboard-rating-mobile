@@ -222,30 +222,6 @@ tr.row-ng td.tl{color:var(--red)!important}
 
 <div class="page">
 
-  <!-- PIN OVERLAY -->
-  <div id="pinOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
-    align-items:center;justify-content:center;">
-    <div style="background:var(--card);border-radius:14px;padding:28px 28px 24px;width:280px;
-      box-shadow:0 8px 32px rgba(0,0,0,.4);text-align:center;">
-      <div style="font-size:28px;margin-bottom:8px">🔒</div>
-      <div style="font-weight:700;font-size:15px;margin-bottom:4px">Pengaturan Terkunci</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Masukkan PIN untuk melanjutkan</div>
-      <input id="pinInput" type="password" maxlength="20" placeholder="Masukkan PIN…"
-        onkeydown="if(event.key==='Enter')submitPin()"
-        style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;
-        background:var(--bg);color:var(--text);font-size:16px;text-align:center;letter-spacing:4px;
-        outline:none;margin-bottom:8px">
-      <div id="pinError" style="display:none;color:var(--red);font-size:12px;margin-bottom:8px">
-        ❌ PIN salah, coba lagi
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn" onclick="closePinPrompt()"
-          style="flex:1;background:var(--bg);color:var(--text2);border:1px solid var(--border)">Batal</button>
-        <button class="btn btn-p" onclick="submitPin()" style="flex:1">Masuk</button>
-      </div>
-    </div>
-  </div>
-
   <!-- SETTINGS (collapsible) -->
   <div class="settings" id="settingsPanel">
 
@@ -308,16 +284,6 @@ tr.row-ng td.tl{color:var(--red)!important}
       ℹ️ Sabtu &amp; Minggu + tanggal di atas otomatis pakai target weekend (kolom G).
     </p>
 
-    <h3>🔐 Ubah PIN Pengaturan</h3>
-    <p class="sinfo" style="margin-bottom:8px">PIN digunakan untuk membuka panel pengaturan ini. PIN awal: <b>1234</b> — segera ubah.</p>
-    <div class="add-row" style="flex-wrap:wrap;gap:6px;margin-bottom:4px">
-      <input type="password" id="pinNewInput" placeholder="PIN baru (min 4 karakter)" maxlength="20"
-        style="flex:1;min-width:140px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
-      <input type="password" id="pinConfirmInput" placeholder="Konfirmasi PIN baru" maxlength="20"
-        style="flex:1;min-width:140px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
-      <button class="btn btn-blue" onclick="changePIN()">Ubah PIN</button>
-    </div>
-    <p class="sinfo">⚠️ PIN disimpan di browser ini. Jika browser direset, PIN kembali ke <b>1234</b>.</p>
   </div>
 
   <!-- SUMMARY CARDS -->
@@ -511,7 +477,7 @@ function fetchGviz(sheet, range, onData, onErr){
   const tmr=setTimeout(()=>{
     if(done)return; done=true; cleanup();
     onErr(new Error('Timeout sheet: '+sheet));
-  },25000);
+  },8000);
   function cleanup(){
     clearTimeout(tmr);
     try{delete window[cb];}catch(e){window[cb]=undefined;}
@@ -1178,55 +1144,12 @@ function delTP(i){
   toast('Periode dihapus');
 }
 
-/* ── SETTINGS PIN ── */
-const SETTINGS_PIN_KEY='rating_settings_pin';
-const SETTINGS_PIN_DEFAULT='1234'; // PIN awal, bisa diubah di settings
-let settingsUnlocked=false;
-
-function getSettingsPin(){
-  try{return localStorage.getItem(SETTINGS_PIN_KEY)||SETTINGS_PIN_DEFAULT;}catch(e){return SETTINGS_PIN_DEFAULT;}
-}
-function saveSettingsPin(pin){
-  try{localStorage.setItem(SETTINGS_PIN_KEY,pin);}catch(e){}
-}
-
 function toggleSettings(){
-  if(settingsUnlocked){
-    // Jika sudah unlock, toggle close
-    const p=document.getElementById('settingsPanel');
-    if(p.classList.contains('open')){
-      p.classList.remove('open');
-      settingsUnlocked=false;
-    } else {
-      openSettingsPanel();
-    }
-    return;
-  }
-  // Belum unlock — tampilkan prompt PIN
-  showPinPrompt();
-}
-
-function showPinPrompt(){
-  document.getElementById('pinOverlay').style.display='flex';
-  document.getElementById('pinInput').value='';
-  setTimeout(()=>document.getElementById('pinInput').focus(),100);
-}
-
-function closePinPrompt(){
-  document.getElementById('pinOverlay').style.display='none';
-}
-
-function submitPin(){
-  const entered=document.getElementById('pinInput').value.trim();
-  if(entered===getSettingsPin()){
-    settingsUnlocked=true;
-    closePinPrompt();
-    openSettingsPanel();
+  const p=document.getElementById('settingsPanel');
+  if(p.classList.contains('open')){
+    p.classList.remove('open');
   } else {
-    document.getElementById('pinError').style.display='block';
-    document.getElementById('pinInput').value='';
-    document.getElementById('pinInput').focus();
-    setTimeout(()=>document.getElementById('pinError').style.display='none',2000);
+    openSettingsPanel();
   }
 }
 
@@ -1237,8 +1160,6 @@ function openSettingsPanel(){
   renderTPList();
   document.getElementById('sheetIdActive').textContent=getSheetId();
   document.getElementById('sheetIdInput').value='';
-  document.getElementById('pinNewInput').value='';
-  document.getElementById('pinConfirmInput').value='';
   document.getElementById('kantorTgtInput').value=S.kantorTgt;
   document.getElementById('kantorTgtInfo').textContent='Saat ini: '+S.kantorTgt+'/hari';
 }
