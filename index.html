@@ -253,7 +253,7 @@ tr.row-ng td.tl{color:var(--red)!important}
     <!-- ── BAGIAN PUBLIK: Target Kantor UID Jabar (tanpa PIN) ── -->
     <h3>🏢 Target Kantor UID Jabar</h3>
     <p class="sinfo" style="margin-bottom:8px">
-      Isi target harian manual untuk Kantor UID Jabar. Disimpan di browser ini.
+      Target harian Kantor UID Jabar. Default: Weekday 50, Weekend 25.
     </p>
     <div class="add-row" style="flex-wrap:wrap;gap:8px;margin-bottom:6px;align-items:center">
       <label style="font-size:12px;font-weight:600;white-space:nowrap">Hari Kerja:</label>
@@ -442,6 +442,8 @@ const S = {
   ulp:{},          // { "UP3 BEKASI": { "ULP BEKASI KOTA": { "2026-09-29": N } } }
   ulpMaster:{},    // { "UP3 BEKASI": ["ULP BEKASI KOTA", ...] } dari sheet UP3-ULP
   holidays: loadHol(),
+  uidWD: null,    // dari Settings sheet (null = pakai default/localStorage)
+  uidWE: null,    // dari Settings sheet (null = pakai default/localStorage)
   loaded: false,
   _rekapDebug: '' // debug info dari parseRekapOld
 };
@@ -621,11 +623,16 @@ function parseTargets(gviz){
 // ── Target manual Kantor UID Jabar ──
 const UID_WD_KEY='rating_uid_wd'; // target hari kerja
 const UID_WE_KEY='rating_uid_we'; // target weekend/libur
+const UID_WD_DEFAULT=50;  // default weekday
+const UID_WE_DEFAULT=25;  // default weekend/libur
 function getUIDTgt(we){
+  // Prioritas: Settings sheet > localStorage > hardcoded default
+  if(we  && S.uidWE!=null) return S.uidWE;
+  if(!we && S.uidWD!=null) return S.uidWD;
   try{
     const v=localStorage.getItem(we?UID_WE_KEY:UID_WD_KEY);
-    return v!=null?parseInt(v)||0:0;
-  }catch(e){return 0;}
+    return v!=null?parseInt(v)||0:(we?UID_WE_DEFAULT:UID_WD_DEFAULT);
+  }catch(e){return we?UID_WE_DEFAULT:UID_WD_DEFAULT;}
 }
 function saveUIDTgt(){
   const wd=parseInt(document.getElementById('uidWD').value)||0;
@@ -639,17 +646,38 @@ function renderUIDInfo(){
   const el=document.getElementById('uidTargetInfo');
   if(!el)return;
   const wd=getUIDTgt(false), we=getUIDTgt(true);
-  if(!wd&&!we){el.textContent='⚠️ Belum diisi — baris Kantor UID Jabar tidak ada target.';el.style.color='var(--amber)';}
-  else{el.textContent='✅ Weekday: '+wd+' · Weekend: '+we;el.style.color='var(--green)';}
+  const wdShow=wd||UID_WD_DEFAULT, weShow=we||UID_WE_DEFAULT;
+  const fromSheet=(S.uidWD!=null||S.uidWE!=null);
+  el.textContent=(fromSheet?'🔗 Dari Google Sheets — ':'✅ ')+
+    'Weekday: '+wdShow+' · Weekend: '+weShow;
+  el.style.color='var(--green)';
 }
 function loadUIDInputs(){
   const wdEl=document.getElementById('uidWD');
   const weEl=document.getElementById('uidWE');
   if(!wdEl||!weEl)return;
   const wd=getUIDTgt(false), we=getUIDTgt(true);
-  wdEl.value=wd||'';
-  weEl.value=we||'';
+  wdEl.value=wd||UID_WD_DEFAULT;
+  weEl.value=we||UID_WE_DEFAULT;
   renderUIDInfo();
+}
+
+// ── Baca Settings sheet → update S.uidWD, S.uidWE, S.holidays ──
+function parseSettings(gviz){
+  if(!gviz||!gviz.table)return;
+  const rows=gviz.table.rows||[];
+  const hols=[];
+  for(const row of rows){
+    const key=row.c&&row.c[0]&&row.c[0].v!=null?String(row.c[0].v).trim().toLowerCase():'';
+    const val=row.c&&row.c[1]&&row.c[1].v!=null?String(row.c[1].v).trim():'';
+    if(!key||!val)continue;
+    if(key==='uid_wd'){ S.uidWD=parseInt(val)||UID_WD_DEFAULT; }
+    else if(key==='uid_we'){ S.uidWE=parseInt(val)||UID_WE_DEFAULT; }
+    else if(key==='libur'&&/^\d{4}-\d{2}-\d{2}$/.test(val)){ hols.push(val); }
+  }
+  // Gunakan daftar libur dari sheet HANYA jika ada isinya
+  if(hols.length>0){ S.holidays=hols; }
+  console.log('[Settings] uid_wd='+S.uidWD+' uid_we='+S.uidWE+' libur='+hols.length+' tanggal');
 }
 
 function baseTgt(up3,ymd){
@@ -1422,6 +1450,16 @@ function loadData(){
       renderAll();
     }
   },e=>{});
+  // SETTINGS — non-blocking; update target UID Jabar + hari libur dari Google Sheets
+  // sehingga semua browser/viewer melihat pengaturan yang sama
+  fetchGviz('Settings','A:B',j=>{
+    parseSettings(j);
+    renderHolChips();
+    renderUIDInfo();
+    if(S.loaded)renderAll();
+  },e=>{
+    console.warn('[Settings] sheet tidak terbaca — pakai localStorage/default:',e.message);
+  });
 }
 
 // ══════════════════════════════════════════════
