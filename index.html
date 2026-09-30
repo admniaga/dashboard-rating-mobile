@@ -437,7 +437,8 @@ let selUlpUp3 = 'SEMUA'; // ULP filter state
 const S = {
   targets:{},     // { "UP3 BEKASI": [v0,v1,...] }  full row dari sheet 01
   rekap:{},       // { "UP3 BEKASI": { "2026-09-29": N } }  dari rekap_new (form responses > Sep29)
-  updateReal:{},  // { "UP3 BEKASI": { "2026-09-29": N } }  dari sheet Update (s.d. Sep29)
+  updateCache:{}, // { "UP3 BEKASI": { "2026-09-29": {target,real,co} } }  dari sheet Update (s.d. Sep29)
+  updateCO:{},    // { "UP3 BEKASI": N }  Carry-Over dari BATAS_UPDATE → titik awal CO untuk Sep30+
   ulp:{},         // { "UP3 BEKASI": { "ULP BEKASI KOTA": { "2026-09-29": N } } }
   ulpMaster:{},   // { "UP3 BEKASI": ["ULP BEKASI KOTA", ...] } dari sheet UP3-ULP
   holidays: loadHol(),
@@ -677,13 +678,14 @@ function excelSerial2Ymd(serial){
 }
 
 function parseUpdate(gviz){
-  S.updateReal={};
+  S.updateCache={};
+  S.updateCO={};
   if(!gviz||!gviz.table){console.warn('[Update] gviz kosong atau tidak ada table');return;}
   const rows=gviz.table.rows||[];
   console.log('[Update] total rows:',rows.length);
   if(rows.length<3){console.warn('[Update] rows<3, tidak ada data');return;}
 
-  // Row index 1 = spreadsheet baris 2 → berisi serial tanggal di col 2+7n
+  // Row index 1 = spreadsheet baris 2 → berisi serial/tanggal di col 2+7n
   const dateRowCells=(rows[1].c)||[];
   const dateCols=[]; // [{colIdx, ymd}]
   for(let i=2;i<dateRowCells.length;i++){
@@ -691,7 +693,6 @@ function parseUpdate(gviz){
     const c=dateRowCells[i];
     if(!c||c.v==null)continue;
     let ymd='';
-    // c.v bisa berupa angka serial atau string tanggal
     const sv=String(c.v);
     if(/^\d{4}-\d{2}-\d{2}$/.test(sv)){
       ymd=sv;
@@ -700,9 +701,8 @@ function parseUpdate(gviz){
       if(dm)ymd=dm[1]+'-'+pad(+dm[2]+1)+'-'+pad(+dm[3]);
     } else {
       const n=parseFloat(sv);
-      if(!isNaN(n)&&n>40000)ymd=excelSerial2Ymd(n); // sanity check angka masuk akal
+      if(!isNaN(n)&&n>40000)ymd=excelSerial2Ymd(n);
     }
-    // Jika ada format tanggal di c.f (formatted)
     if(!ymd&&c.f){
       const m=String(c.f).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
       if(m)ymd=m[3]+'-'+pad(+m[2])+'-'+pad(+m[1]);
@@ -710,34 +710,75 @@ function parseUpdate(gviz){
     if(!ymd||ymd>BATAS_UPDATE)continue;
     dateCols.push({colIdx:i,ymd});
   }
-  console.log('[Update] dateCols ditemukan:',dateCols.length, dateCols.map(d=>d.ymd).join(', ')||'(kosong)');
+  console.log('[Update] dateCols ditemukan:',dateCols.length,
+    dateCols.map(d=>d.ymd).join(', ')||'(kosong)');
   if(!dateCols.length){
-    console.warn('[Update] Tidak ada kolom tanggal yang terbaca. Cek format row 2 sheet Update.');
-    // Debug: tampilkan 10 cell pertama row 2
+    console.warn('[Update] Tidak ada kolom tanggal. Cek format row 2 sheet Update.');
     const dbg=dateRowCells.slice(0,15).map((c,i)=>i+':'+JSON.stringify(c&&c.v)).join(' | ');
     console.warn('[Update] Row 2 (idx 0-14):',dbg);
+    _setUpdateBadge(0);
+    return;
   }
 
-  // Baris data (index 2+)
-  for(let r=2;r<rows.length;r++){
-    const rc=(rows[r].c)||[];
-    for(const {colIdx,ymd} of dateCols){
-      const up3Col=colIdx-1;  // 1+7n
-      const realCol=colIdx+1; // 3+7n
-      const up3Cell=rc[up3Col];
-      const realCell=rc[realCol];
-      const up3=up3Cell?(up3Cell.f!=null?String(up3Cell.f):String(up3Cell.v||'')).toUpperCase().trim():'';
-      if(!up3)continue;
-      const real=realCell?parseFloat(realCell.v)||0:0;
-      if(!real)continue;
-      if(!S.updateReal[up3])S.updateReal[up3]={};
-      S.updateReal[up3][ymd]=(S.updateReal[up3][ymd]||0)+real;
+  // ── Bangun peta rowIndex→UP3 dari group PERTAMA ──────────────────────────
+  // UP3 mungkin hanya ditulis sekali (kolom group pertama), tidak diulang di setiap group
+  const rowUp3Map={};
+  {
+    const firstG=dateCols[0];
+    for(let r=2;r<rows.length;r++){
+      const rc=(rows[r].c)||[];
+      const uc=rc[firstG.colIdx-1];
+      const nm=uc?(uc.f!=null?String(uc.f):String(uc.v||'')).toUpperCase().trim():'';
+      if(nm) rowUp3Map[r]=nm;
     }
   }
-  const up3Keys=Object.keys(S.updateReal);
-  console.log('[Update] S.updateReal: '+up3Keys.length+' UP3 →', up3Keys.join(', ')||'(kosong)');
-  // Update status indikator
-  _setUpdateBadge(up3Keys.length);
+
+  // ── Parse SEMUA group: isi S.updateCache[up3][ymd]={target,real,co} ──────
+  // Kolom per group (relatif ke colIdx = posisi date di row 2):
+  //   colIdx-1 = UP3 (col 1+7n)
+  //   colIdx   = TARGET (col 2+7n)   ← effective target (sudah include CO hari sblm)
+  //   colIdx+1 = REALISASI (col 3+7n)
+  //   colIdx+2 = SELISIH   (col 4+7n)
+  //   colIdx+3 = CARRY OVER (col 5+7n)
+  //   colIdx+4 = NEXT TARGET (col 6+7n)
+  for(const {colIdx,ymd} of dateCols){
+    for(let r=2;r<rows.length;r++){
+      const rc=(rows[r].c)||[];
+      const uc=rc[colIdx-1];
+      let up3=uc?(uc.f!=null?String(uc.f):String(uc.v||'')).toUpperCase().trim():'';
+      if(!up3) up3=rowUp3Map[r]||'';
+      if(!up3)continue;
+      const tgtCell=rc[colIdx];
+      const relCell=rc[colIdx+1];
+      const coCell =rc[colIdx+3];
+      const target=tgtCell?parseFloat(tgtCell.v)||0:0;
+      const real  =relCell?parseFloat(relCell.v)||0:0;
+      const co    =coCell ?parseFloat(coCell.v) ||0:0;
+      if(!S.updateCache[up3])S.updateCache[up3]={};
+      S.updateCache[up3][ymd]={target,real,co};
+    }
+  }
+
+  // ── S.updateCO = CO dari tanggal terakhir (BATAS_UPDATE) ─────────────────
+  const lastGroup=dateCols.reduce((b,d)=>(!b||d.ymd>b.ymd)?d:b,null);
+  if(lastGroup){
+    for(let r=2;r<rows.length;r++){
+      const rc=(rows[r].c)||[];
+      const uc=rc[lastGroup.colIdx-1];
+      let up3=uc?(uc.f!=null?String(uc.f):String(uc.v||'')).toUpperCase().trim():'';
+      if(!up3)up3=rowUp3Map[r]||'';
+      if(!up3)continue;
+      const coCell=rc[lastGroup.colIdx+3];
+      S.updateCO[up3]=coCell?parseFloat(coCell.v)||0:0;
+    }
+    console.log('[Update] S.updateCO (dari '+lastGroup.ymd+'):',
+      Object.entries(S.updateCO).map(([u,v])=>u.replace('UP3 ','')+'='+v).join(', ')||'(kosong)');
+  }
+
+  const cacheKeys=Object.keys(S.updateCache);
+  console.log('[Update] S.updateCache: '+cacheKeys.length+' UP3, '+dateCols.length+' tanggal →',
+    cacheKeys.join(', ')||'(kosong)');
+  _setUpdateBadge(cacheKeys.length);
 }
 
 function _setUpdateBadge(cnt){
@@ -755,36 +796,70 @@ function _setUpdateBadge(cnt){
   el.style.display='';
 }
 
-// Ambil realisasi: untuk tanggal ≤ BATAS_UPDATE → prioritaskan sheet Update;
-// jika tidak ada data di Update → fallback ke rekap_new.
+// Ambil realisasi: untuk tanggal ≤ BATAS_UPDATE → dari S.updateCache;
+// untuk tanggal > BATAS_UPDATE → dari S.rekap (rekap_new).
 function getRealFor(up3,ymd){
-  if(ymd<=BATAS_UPDATE&&S.updateReal[up3]){
-    const v=S.updateReal[up3][ymd];
-    if(v!=null)return v;
+  if(ymd<=BATAS_UPDATE){
+    const c=S.updateCache[up3]&&S.updateCache[up3][ymd];
+    if(c)return c.real;
   }
   return (S.rekap[up3]&&S.rekap[up3][ymd])||0;
 }
 
 // ══════════════════════════════════════════════
-//  PARSE rekap_ulp  (format LONG: UP3 | ULP | tanggal | jumlah)
-//  Satu baris = satu ULP + satu tanggal
+//  PARSE rekap (sheet lama) — ULP historis ≤ BATAS_UPDATE
+//  Format LONG: UP3 | ULP | tanggal | jumlah
+//  Isi S.ulp untuk tanggal ≤ BATAS_UPDATE
 // ══════════════════════════════════════════════
-function parseRekapUlp(gviz){
-  S.ulp={};
+function parseRekapOld(gviz){
+  // Tidak reset S.ulp agar bisa di-merge dengan rekap_ulp (> BATAS_UPDATE)
   if(!gviz||!gviz.table)return;
   const rows=gviz.table.rows||[];
+  let cnt=0;
   for(const row of rows){
     const up3=gStr(row,0).toUpperCase().trim();
     const ulp=gStr(row,1).toUpperCase().trim();
     if(!up3||!ulp)continue;
     const ymd=gDateCell((row.c||[])[2]);
     if(!ymd)continue;
+    // Hanya ambil data ≤ BATAS_UPDATE dari sheet rekap lama
+    if(ymd>BATAS_UPDATE)continue;
     const v=parseInt(gVal(row,3))||0;
     if(!v)continue;
     if(!S.ulp[up3])S.ulp[up3]={};
     if(!S.ulp[up3][ulp])S.ulp[up3][ulp]={};
     S.ulp[up3][ulp][ymd]=(S.ulp[up3][ulp][ymd]||0)+v;
+    cnt++;
   }
+  console.log('[rekap-old] parsed '+cnt+' ULP rows ≤ '+BATAS_UPDATE);
+}
+
+// ══════════════════════════════════════════════
+//  PARSE rekap_ulp  (format LONG: UP3 | ULP | tanggal | jumlah)
+//  Hanya untuk tanggal > BATAS_UPDATE (Sep30+)
+//  Di-merge ke S.ulp yang sudah terisi parseRekapOld
+// ══════════════════════════════════════════════
+function parseRekapUlp(gviz){
+  // TIDAK reset S.ulp di sini — parseRekapOld sudah mengisi historis
+  if(!gviz||!gviz.table)return;
+  const rows=gviz.table.rows||[];
+  let cnt=0;
+  for(const row of rows){
+    const up3=gStr(row,0).toUpperCase().trim();
+    const ulp=gStr(row,1).toUpperCase().trim();
+    if(!up3||!ulp)continue;
+    const ymd=gDateCell((row.c||[])[2]);
+    if(!ymd)continue;
+    // Hanya ambil data > BATAS_UPDATE dari rekap_ulp
+    if(ymd<=BATAS_UPDATE)continue;
+    const v=parseInt(gVal(row,3))||0;
+    if(!v)continue;
+    if(!S.ulp[up3])S.ulp[up3]={};
+    if(!S.ulp[up3][ulp])S.ulp[up3][ulp]={};
+    S.ulp[up3][ulp][ymd]=(S.ulp[up3][ulp][ymd]||0)+v;
+    cnt++;
+  }
+  console.log('[rekap_ulp] parsed '+cnt+' ULP rows > '+BATAS_UPDATE);
 }
 
 // ══════════════════════════════════════════════
@@ -795,63 +870,74 @@ function parseRekapUlp(gviz){
 
 // ══════════════════════════════════════════════
 //  COMPUTE for a date range
+//
+//  Untuk tanggal ≤ BATAS_UPDATE (Sep29):
+//    → target, realisasi, CO dibaca LANGSUNG dari S.updateCache
+//    → tidak ada perhitungan ulang; nilai sudah valid dari sheet Update
+//
+//  Untuk tanggal > BATAS_UPDATE (Sep30+):
+//    → hitung target dari formula (period 3) + CO awal dari S.updateCO
+//    → realisasi dari S.rekap (rekap_new)
 // ══════════════════════════════════════════════
 function computeRange(fromYmd,toYmd){
-  // Pre-compute carry-over dari CALC_EPOCH agar CO yang masuk ke fromYmd sudah benar,
-  // termasuk carry-over dari bulan-bulan sebelumnya.
-  const warmStart=CALC_EPOCH<fromYmd?CALC_EPOCH:fromYmd;
-  const runCO={};
-  for(const u of UP3S) runCO[u]=0;
+  const totBase={}, totEff={}, totReal={}, runCO={};
+  for(const u of UP3S){ totBase[u]=0; totEff[u]=0; totReal[u]=0; runCO[u]=0; }
 
-  // Warm up CO chain dari warmStart s.d. sehari sebelum fromYmd
-  if(warmStart<fromYmd){
-    for(const ymd of datesBetween(warmStart,dayBefore(fromYmd))){
+  const days=datesBetween(fromYmd,toYmd);
+
+  // Split: historis (≤ BATAS_UPDATE) vs. current (> BATAS_UPDATE)
+  const histDays=days.filter(d=>d<=BATAS_UPDATE);
+  const curDays =days.filter(d=>d>BATAS_UPDATE);
+
+  // ─── HISTORIS: lookup langsung dari S.updateCache ──────────────────────
+  for(const ymd of histDays){
+    for(const u of UP3S){
+      const c=S.updateCache[u]&&S.updateCache[u][ymd];
+      if(!c)continue;
+      totEff[u] +=c.target;  // target efektif (sudah include CO dari hari sebelumnya)
+      totBase[u]+=c.target;  // base = eff untuk historis
+      totReal[u]+=c.real;
+      runCO[u]   =c.co;      // CO dari hari ini → terus di-update ke hari terakhir historis
+    }
+  }
+
+  // ─── CURRENT (Sep30+): hitung dengan formula ───────────────────────────
+  if(curDays.length>0){
+    // Jika tidak ada histDays, pakai S.updateCO sebagai CO awal
+    if(histDays.length===0){
+      for(const u of UP3S) runCO[u]=S.updateCO[u]||0;
+      console.log('[computeRange] CO awal dari S.updateCO: MAJALAYA='+
+        runCO['UP3 MAJALAYA']+', BEKASI='+runCO['UP3 BEKASI']);
+    }
+    // histDays.length>0: runCO sudah terisi dari loop historis di atas
+    for(const ymd of curDays){
       for(const u of UP3S){
-        // Reset CO saat masuk periode baru yang bertanda resetCO
-        const p=getTP(ymd);
-        if(p.resetCO && p.from===ymd) runCO[u]=0;
         const base=baseTgt(u,ymd);
-        const eff=base+runCO[u];
+        const eff =base+runCO[u];
         const real=getRealFor(u,ymd);
+        totBase[u]+=base;
+        totEff[u] +=eff;
+        totReal[u]+=real;
         runCO[u]=Math.max(0,eff-real);
       }
     }
   }
 
-  const days=datesBetween(fromYmd,toYmd);
-
-  // Accumulators
-  const totBase={}, totEff={}, totReal={};
-  for(const u of UP3S){ totBase[u]=0; totEff[u]=0; totReal[u]=0; }
-
-  for(const ymd of days){
-    for(const u of UP3S){
-      // Reset CO saat masuk periode baru yang bertanda resetCO
-      const p=getTP(ymd);
-      if(p.resetCO && p.from===ymd) runCO[u]=0;
-      const base=baseTgt(u,ymd);
-      const eff=base+runCO[u];
-      const real=getRealFor(u,ymd);
-      totBase[u]+=base;
-      totEff[u]+=eff;
-      totReal[u]+=real;
-      // Carry-over: kurang → bawa, cukup/lebih → 0
-      runCO[u]=Math.max(0,eff-real);
-    }
-  }
-
-  // Final carry-over = runCO after last day
-  // Target+1 = base(next day) + final CO
+  // ─── Target hari berikutnya (kolom tgt1) ───────────────────────────────
   const nextDay=dayAfter(toYmd);
-  const rows=UP3S.map(u=>({
-    u,
-    base: totBase[u],
-    eff:  totEff[u],
-    real: totReal[u],
-    sel:  totReal[u]-totEff[u],
-    co:   runCO[u],
-    tgt1: baseTgt(u,nextDay)+runCO[u]
-  }));
+  const rows=UP3S.map(u=>{
+    let tgt1;
+    if(nextDay<=BATAS_UPDATE){
+      // Masih historis → ambil dari cache
+      tgt1=(S.updateCache[u]&&S.updateCache[u][nextDay])
+           ?S.updateCache[u][nextDay].target:0;
+    } else {
+      // Sep30+ → hitung dari formula + CO saat ini
+      tgt1=baseTgt(u,nextDay)+runCO[u];
+    }
+    return {u, base:totBase[u], eff:totEff[u], real:totReal[u],
+            sel:totReal[u]-totEff[u], co:runCO[u], tgt1};
+  });
 
   // Sort: tercapai (hijau) dahulu, lalu tidak tercapai (merah); dalam grup sort real desc
   rows.sort((a,b)=>{
@@ -1164,6 +1250,9 @@ function loadData(){
     try{
       parseTargets(res.s01);
       parseRekap(res.rekap);
+      // ULP: parseRekapOld DULU (historis ≤ BATAS_UPDATE), lalu rekap_ulp (> BATAS_UPDATE)
+      // Keduanya bisa kosong saat ini (bonus non-blocking), akan re-render saat tiba
+      if(res.rekapOld)parseRekapOld(res.rekapOld);
       if(res.rekapulp)parseRekapUlp(res.rekapulp);
       if(res.ulpup3)parseUlpMaster(res.ulpup3);
       if(res.updateSheet){
@@ -1195,7 +1284,16 @@ function loadData(){
     errs.push(e); done(); // tetap lanjut render meski Update gagal
   }, 25000); // timeout 25 detik (sheet besar)
   // BONUS — tidak blokir; kalau sheet belum siap/gagal → abaikan, re-render setelah tiba
-  fetchGviz('rekap_ulp','A:D',j=>{res.rekapulp=j;if(S.loaded){parseRekapUlp(j);renderAll();}},e=>{});
+  // "rekap" (sheet lama) → ULP historis ≤ BATAS_UPDATE. Di-merge ke S.ulp sebelum rekap_ulp.
+  fetchGviz('rekap','A:D',j=>{
+    res.rekapOld=j;
+    if(S.loaded){parseRekapOld(j);renderAll();}
+  },e=>{console.warn('[rekap-old] tidak terbaca:',e.message);});
+  // "rekap_ulp" → ULP untuk Sep30+ (difilter > BATAS_UPDATE di dalam parseRekapUlp)
+  fetchGviz('rekap_ulp','A:D',j=>{
+    res.rekapulp=j;
+    if(S.loaded){parseRekapUlp(j);renderAll();}
+  },e=>{});
   fetchGviz('UP3-ULP','A1:B200',j=>{res.ulpup3=j;if(S.loaded){parseUlpMaster(j);renderAll();}},e=>{});
 }
 
