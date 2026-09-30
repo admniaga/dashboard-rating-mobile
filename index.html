@@ -421,6 +421,7 @@ const SHEET_ID = "1o60PPGUmsC2X0FVwoVdKuR3ePIMfqRxB0_0Vf0w_rMo";
 // Titik awal mutlak untuk warm-up carry-over.
 // Sesuaikan jika data rekap_new ada dari bulan sebelumnya.
 const CALC_EPOCH = "2026-08-01";
+const BUILD_VER = "v20260930-a"; // untuk cek versi di console browser
 try{localStorage.removeItem('rating_sheetid');}catch(e){}
 function getSheetId(){ return SHEET_ID; }
 
@@ -698,12 +699,26 @@ function parseSettings(gviz){
   const rows=gviz.table.rows||[];
   const hols=[];
   for(const row of rows){
-    const key=row.c&&row.c[0]&&row.c[0].v!=null?String(row.c[0].v).trim().toLowerCase():'';
-    const val=row.c&&row.c[1]&&row.c[1].v!=null?String(row.c[1].v).trim():'';
-    if(!key||!val)continue;
-    if(key==='uid_wd'){ S.uidWD=parseInt(val)||UID_WD_DEFAULT; }
-    else if(key==='uid_we'){ S.uidWE=parseInt(val)||UID_WE_DEFAULT; }
-    else if(key==='libur'&&/^\d{4}-\d{2}-\d{2}$/.test(val)){ hols.push(val); }
+    // Gunakan gStr agar c.f (formatted value) diutamakan → handles angka & date dari gviz
+    const key=gStr(row,0).toLowerCase();
+    // Untuk nilai numerik (uid_wd/uid_we): gStr mengembalikan c.f seperti "50"
+    // Untuk tanggal libur: c.v gviz bisa "Date(2026,0,1)" atau serial — ambil dari c.f atau gDateCell
+    const rawStr=gStr(row,1);
+    const dateStr=gDateCell((row.c||[])[1]);
+    if(!key)continue;
+    if(key==='uid_wd'){
+      const n=parseInt(rawStr)||UID_WD_DEFAULT;
+      S.uidWD=(n>0?n:UID_WD_DEFAULT);
+    }
+    else if(key==='uid_we'){
+      const n=parseInt(rawStr)||UID_WE_DEFAULT;
+      S.uidWE=(n>0?n:UID_WE_DEFAULT);
+    }
+    else if(key==='libur'){
+      // Coba formatted string dulu, fallback ke gDateCell
+      const d=/^\d{4}-\d{2}-\d{2}$/.test(rawStr)?rawStr:dateStr;
+      if(d)hols.push(d);
+    }
   }
   // Gunakan daftar libur dari sheet HANYA jika ada isinya
   if(hols.length>0){ S.holidays=hols; }
@@ -1731,6 +1746,7 @@ function toast(msg,dur=3000){
 //  INIT
 // ══════════════════════════════════════════════
 function init(){
+  console.log('🔖 Dashboard build:', BUILD_VER);
   const today=toYMD(new Date());
   document.getElementById('dateFrom').value=getDefaultFrom(today);
   document.getElementById('dateTo').value=today;
