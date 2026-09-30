@@ -818,12 +818,24 @@ function _showUpdateDebug(rows, dateRowCells, dateCols){
     sample29.push('<b>'+u+'</b>: '+(c?'tgt='+c.target+' real='+c.real+' co='+c.co:'❌ tidak ada'));
   }
 
-  // 5. S.updateCO sample
-  const coSample=['UP3 BEKASI','UP3 BANDUNG','UP3 MAJALAYA'].map(
-    u=>'<b>'+u+'</b>='+((S.updateCO[u]||0))).join(', ');
-
-  // 6. Cache keys (UP3 names in cache)
+  // 5. Cache keys (UP3 names in cache)
   const cacheKeys=Object.keys(S.updateCache);
+
+  // 6. Hitung total Sep29 dari getRealFor dan cache target
+  let totTgt29=0, totReal29=0;
+  const realSrc29=[];
+  for(const u of UP3S){
+    const c=S.updateCache[u]&&S.updateCache[u]['2026-09-29'];
+    if(!c)continue;
+    const rl=getRealFor(u,'2026-09-29');
+    totTgt29+=c.target;
+    totReal29+=rl;
+    // Tandai sumber: "U" = Update, "R" = rekap_new fallback
+    const src=(c.real>0)?'U':'R';
+    if(u==='UP3 BEKASI'||u==='UP3 BANDUNG'||u==='UP3 MAJALAYA'){
+      realSrc29.push('<b>'+u+'</b>: real='+rl+'('+src+')');
+    }
+  }
 
   el.innerHTML=`
     <div style="font-size:11px;line-height:1.7">
@@ -832,8 +844,14 @@ function _showUpdateDebug(rows, dateRowCells, dateCols){
       <b>UP3 di cache (${cacheKeys.length}):</b> ${cacheKeys.join(', ')||'kosong'}<br>
       <b>Row date (baris 2 sheet) col 0-20:</b> ${rawDateRow.join(' | ')}<br>
       <b>Row data pertama (baris 3 sheet) col 0-9:</b> ${rawDataRow}<br>
-      <b>Cache Sep29:</b> ${sample29.join(' | ')}<br>
-      <b>S.updateCO:</b> ${coSample}
+      <b>Cache Sep29 (tgt/real/co dari sheet):</b> ${sample29.join(' | ')}<br>
+      <b>Sep29 TOTAL (setelah getRealFor):</b>
+        tgt=<b>${totTgt29}</b> real=<b>${totReal29}</b>
+        <span style="color:${Math.abs(totTgt29-2211)<5?'var(--green)':'var(--red)'}">
+          (exp tgt=2211)</span>
+        <span style="color:${Math.abs(totReal29-1782)<5?'var(--green)':'var(--red)'}">
+          (exp real=1782)</span><br>
+      <b>Real source Sep29 (U=Update, R=rekapNew):</b> ${realSrc29.join(' | ')}
     </div>`;
   el.style.display='';
 }
@@ -854,11 +872,14 @@ function _setUpdateBadge(cnt){
 }
 
 // Ambil realisasi: untuk tanggal ≤ BATAS_UPDATE → dari S.updateCache;
+// jika Update real=0 → fallback ke S.rekap (rekap_new, data form submission).
 // untuk tanggal > BATAS_UPDATE → dari S.rekap (rekap_new).
 function getRealFor(up3,ymd){
   if(ymd<=BATAS_UPDATE){
     const c=S.updateCache[up3]&&S.updateCache[up3][ymd];
-    if(c)return c.real;
+    if(c&&c.real>0)return c.real;        // Update sheet ada data → pakai
+    // real=0 di Update (belum di-input) → coba rekap_new sebagai fallback
+    return (S.rekap[up3]&&S.rekap[up3][ymd])||0;
   }
   return (S.rekap[up3]&&S.rekap[up3][ymd])||0;
 }
@@ -946,28 +967,29 @@ function computeRange(fromYmd,toYmd){
   const histDays=days.filter(d=>d<=BATAS_UPDATE);
   const curDays =days.filter(d=>d>BATAS_UPDATE);
 
-  // ─── HISTORIS: lookup langsung dari S.updateCache ──────────────────────
+  // ─── HISTORIS: lookup dari S.updateCache; real via getRealFor (ada fallback rekap_new) ──
   for(const ymd of histDays){
     for(const u of UP3S){
       const c=S.updateCache[u]&&S.updateCache[u][ymd];
       if(!c)continue;
-      totEff[u] +=c.target;  // target efektif (sudah include CO dari hari sebelumnya)
-      totBase[u]+=c.target;  // base = eff untuk historis
-      totReal[u]+=c.real;
-      runCO[u]   =c.co;      // CO dari hari ini → terus di-update ke hari terakhir historis
+      const real=getRealFor(u,ymd); // pakai getRealFor: Update sheet jika non-0, else rekap_new
+      totEff[u] +=c.target;  // target efektif dari cache (sudah include CO)
+      totBase[u]+=c.target;
+      totReal[u]+=real;
+      runCO[u]=Math.max(0,c.target-real); // hitung ulang CO dari real yang benar (bukan c.co)
     }
   }
 
   // ─── CURRENT (Sep30+): hitung dengan formula ───────────────────────────
+  // runCO dari histDays terakhir (atau 0 jika histDays kosong)
+  // S.updateCO TIDAK dipakai → period 3 (Sep30) punya resetCO:true → CO di-reset di loop
   if(curDays.length>0){
-    // Jika tidak ada histDays, pakai S.updateCO sebagai CO awal
-    if(histDays.length===0){
-      for(const u of UP3S) runCO[u]=S.updateCO[u]||0;
-      console.log('[computeRange] CO awal dari S.updateCO: MAJALAYA='+
-        runCO['UP3 MAJALAYA']+', BEKASI='+runCO['UP3 BEKASI']);
-    }
-    // histDays.length>0: runCO sudah terisi dari loop historis di atas
     for(const ymd of curDays){
+      // Reset CO di awal period baru yang memiliki resetCO:true
+      const p=getTP(ymd);
+      if(p&&p.resetCO&&p.from===ymd){
+        for(const u of UP3S) runCO[u]=0;
+      }
       for(const u of UP3S){
         const base=baseTgt(u,ymd);
         const eff =base+runCO[u];
