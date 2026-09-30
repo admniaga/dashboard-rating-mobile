@@ -209,6 +209,9 @@ tr.row-ng td.tl{color:var(--red)!important}
   </div>
 </div>
 
+<!-- DEBUG PANEL (hidden until Update sheet parsed) -->
+<div id="updateDebugPanel" style="display:none;margin:8px 14px;padding:10px 12px;background:var(--card);border:1px solid var(--amber);border-radius:8px;color:var(--text2)"></div>
+
 <!-- DATE BAR -->
 <div class="datebar">
   <label>Dari:</label>
@@ -779,6 +782,60 @@ function parseUpdate(gviz){
   console.log('[Update] S.updateCache: '+cacheKeys.length+' UP3, '+dateCols.length+' tanggal →',
     cacheKeys.join(', ')||'(kosong)');
   _setUpdateBadge(cacheKeys.length);
+
+  // ── Debug panel: tampilkan hasil parse agar mudah diverifikasi ──────────
+  _showUpdateDebug(rows, dateRowCells, dateCols);
+}
+
+function _showUpdateDebug(rows, dateRowCells, dateCols){
+  const el=document.getElementById('updateDebugPanel');
+  if(!el)return;
+
+  // 1. Raw cols 0–20 dari row index 1 (date row)
+  const rawDateRow=[];
+  for(let i=0;i<=20&&i<dateRowCells.length;i++){
+    const c=dateRowCells[i];
+    rawDateRow.push('<b>col'+i+'</b>: '+(c?JSON.stringify(c.v):'—'));
+  }
+
+  // 2. dateCols summary
+  const dcSummary=dateCols.length
+    ? dateCols.map(d=>'col'+d.colIdx+'='+d.ymd).join(', ')
+    : '⚠️ KOSONG – tidak ada tanggal ter-parse!';
+
+  // 3. Raw cols disekitar colIdx=2 dari row data pertama (rows[2])
+  let rawDataRow='—';
+  if(rows.length>2){
+    const rc=(rows[2].c)||[];
+    const colsToShow=[0,1,2,3,4,5,6,7,8,9];
+    rawDataRow=colsToShow.map(i=>'<b>col'+i+'</b>: '+(rc[i]?JSON.stringify(rc[i].v):'—')).join(', ');
+  }
+
+  // 4. Sample S.updateCache Sep29 untuk 3 UP3 pertama
+  const sample29=[];
+  for(const u of ['UP3 BEKASI','UP3 BANDUNG','UP3 MAJALAYA']){
+    const c=S.updateCache[u]&&S.updateCache[u]['2026-09-29'];
+    sample29.push('<b>'+u+'</b>: '+(c?'tgt='+c.target+' real='+c.real+' co='+c.co:'❌ tidak ada'));
+  }
+
+  // 5. S.updateCO sample
+  const coSample=['UP3 BEKASI','UP3 BANDUNG','UP3 MAJALAYA'].map(
+    u=>'<b>'+u+'</b>='+((S.updateCO[u]||0))).join(', ');
+
+  // 6. Cache keys (UP3 names in cache)
+  const cacheKeys=Object.keys(S.updateCache);
+
+  el.innerHTML=`
+    <div style="font-size:11px;line-height:1.7">
+      <b style="color:var(--acc)">🔍 DEBUG: Update Sheet Parse</b><br>
+      <b>dateCols (${dateCols.length}):</b> ${dcSummary}<br>
+      <b>UP3 di cache (${cacheKeys.length}):</b> ${cacheKeys.join(', ')||'kosong'}<br>
+      <b>Row date (baris 2 sheet) col 0-20:</b> ${rawDateRow.join(' | ')}<br>
+      <b>Row data pertama (baris 3 sheet) col 0-9:</b> ${rawDataRow}<br>
+      <b>Cache Sep29:</b> ${sample29.join(' | ')}<br>
+      <b>S.updateCO:</b> ${coSample}
+    </div>`;
+  el.style.display='';
 }
 
 function _setUpdateBadge(cnt){
