@@ -1,0 +1,59 @@
+# .github/workflows/screenshot-telegram.yml
+#
+# Screenshot tabel UP3 dashboard Rating PLN Mobile
+# dan kirim ke Telegram setiap pagi 07.00 WIB.
+# GRATIS selamanya — pakai Telegram Bot API resmi.
+#
+# SETUP:
+# 1. Taruh file ini di .github/workflows/ di repo GitHub Pages Anda.
+# 2. Taruh screenshot-telegram.js di root repo (sejajar index.html).
+# 3. Isi Secrets di GitHub → Settings → Secrets and variables → Actions:
+#       TELEGRAM_TOKEN   = token dari @BotFather
+#       TELEGRAM_CHAT_ID = chat ID tujuan (pribadi atau grup)
+#       DASHBOARD_URL    = https://admniaga.github.io/dashboard-rating-mobile/
+
+name: Screenshot Dashboard → Telegram
+
+on:
+  schedule:
+    # 07:00 WIB = 00:00 UTC
+    - cron: '0 0 * * *'
+
+  # Tombol test manual
+  workflow_dispatch:
+
+jobs:
+  kirim-screenshot:
+    name: Screenshot & kirim Telegram
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: npm install playwright
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Screenshot & kirim Telegram
+        env:
+          TELEGRAM_TOKEN  : ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DASHBOARD_URL   : ${{ secrets.DASHBOARD_URL }}
+        run: node screenshot-telegram.js
+
+      - name: Simpan screenshot (bisa diunduh 7 hari)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-${{ github.run_id }}
+          path: /tmp/up3_rating.png
+          retention-days: 7
