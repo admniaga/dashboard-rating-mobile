@@ -252,17 +252,27 @@ tr.row-ng td.tl{color:var(--red)!important}
 
     <!-- ── BAGIAN PUBLIK: Target Kantor UID Jabar (tanpa PIN) ── -->
     <h3>🏢 Target Kantor UID Jabar</h3>
-    <p class="sinfo" style="margin-bottom:8px">
-      Target harian Kantor UID Jabar. Default: Weekday 50, Weekend 25.
-    </p>
-    <div class="add-row" style="flex-wrap:wrap;gap:8px;margin-bottom:6px;align-items:center">
-      <label style="font-size:12px;font-weight:600;white-space:nowrap">Hari Kerja:</label>
-      <input type="number" id="uidWD" min="0" step="1" placeholder="0"
-        style="width:100px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
-      <label style="font-size:12px;font-weight:600;white-space:nowrap">Weekend/Libur:</label>
-      <input type="number" id="uidWE" min="0" step="1" placeholder="0"
-        style="width:100px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
-      <button class="btn btn-blue" onclick="saveUIDTgt()">💾 Simpan</button>
+    <!-- Tampil ketika Settings sheet berhasil dibaca -->
+    <div id="uidSheetMode" style="display:none">
+      <p class="sinfo" style="margin-bottom:4px">
+        🔗 Diatur dari sheet <b>Settings</b> di spreadsheet master.<br>
+        Untuk mengubah: edit baris <code>uid_wd</code> (Hari Kerja) dan <code>uid_we</code> (Weekend/Libur) langsung di spreadsheet master.
+      </p>
+    </div>
+    <!-- Tampil sebagai fallback jika sheet Settings belum ada -->
+    <div id="uidLocalMode">
+      <p class="sinfo" style="margin-bottom:8px">
+        Target harian Kantor UID Jabar. Default: Weekday 50, Weekend 25.
+      </p>
+      <div class="add-row" style="flex-wrap:wrap;gap:8px;margin-bottom:6px;align-items:center">
+        <label style="font-size:12px;font-weight:600;white-space:nowrap">Hari Kerja:</label>
+        <input type="number" id="uidWD" min="0" step="1" placeholder="0"
+          style="width:100px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+        <label style="font-size:12px;font-weight:600;white-space:nowrap">Weekend/Libur:</label>
+        <input type="number" id="uidWE" min="0" step="1" placeholder="0"
+          style="width:100px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+        <button class="btn btn-blue" onclick="saveUIDTgt()">💾 Simpan</button>
+      </div>
     </div>
     <p class="sinfo" id="uidTargetInfo" style="margin-bottom:12px">—</p>
 
@@ -301,7 +311,14 @@ tr.row-ng td.tl{color:var(--red)!important}
 
       <h3>📅 Hari Libur / Tanggal Merah — dianggap sebagai Weekend</h3>
       <div class="hol-chips" id="holChips"></div>
-      <div class="add-row">
+      <!-- Tampil ketika Settings sheet berhasil dibaca -->
+      <p id="holSheetNote" style="display:none;font-size:12px;color:var(--text2);margin:6px 0 8px">
+        🔗 Hari libur diatur dari sheet <b>Settings</b>.<br>
+        Untuk menambah tanggal merah: tambahkan baris baru di baris paling bawah sheet Settings:<br>
+        <code style="display:inline-block;margin-top:4px;background:var(--bg2,#f4f4f5);padding:3px 8px;border-radius:4px;font-size:11px">libur &nbsp;|&nbsp; YYYY-MM-DD</code>
+      </p>
+      <!-- Tampil sebagai fallback jika sheet Settings belum ada -->
+      <div id="holAddRow" class="add-row">
         <label style="font-size:11px;font-weight:600">Tambah:</label>
         <input type="date" id="newHol">
         <button class="btn btn-blue" onclick="addHol()">+ Tambah</button>
@@ -662,6 +679,19 @@ function loadUIDInputs(){
   renderUIDInfo();
 }
 
+// ── Tampilkan/sembunyikan elemen panel sesuai sumber settings ──
+function syncSettingsUI(){
+  const fromSheet=(S.uidWD!=null||S.uidWE!=null);
+  const sheetMode =document.getElementById('uidSheetMode');
+  const localMode =document.getElementById('uidLocalMode');
+  const holAddRow =document.getElementById('holAddRow');
+  const holSheetNote=document.getElementById('holSheetNote');
+  if(sheetMode)  sheetMode.style.display  = fromSheet?'':'none';
+  if(localMode)  localMode.style.display  = fromSheet?'none':'';
+  if(holAddRow)  holAddRow.style.display  = fromSheet?'none':'';
+  if(holSheetNote)holSheetNote.style.display=fromSheet?'':'none';
+}
+
 // ── Baca Settings sheet → update S.uidWD, S.uidWE, S.holidays ──
 function parseSettings(gviz){
   if(!gviz||!gviz.table)return;
@@ -678,6 +708,7 @@ function parseSettings(gviz){
   // Gunakan daftar libur dari sheet HANYA jika ada isinya
   if(hols.length>0){ S.holidays=hols; }
   console.log('[Settings] uid_wd='+S.uidWD+' uid_we='+S.uidWE+' libur='+hols.length+' tanggal');
+  syncSettingsUI();
 }
 
 function baseTgt(up3,ymd){
@@ -1607,7 +1638,9 @@ function openSettingsPanel(){
   if(advInput)advInput.value='';
   const advErr=document.getElementById('advPinErr');
   if(advErr)advErr.style.display='none';
-  // Muat nilai UID Jabar
+  // Tampilkan mode yang sesuai (sheet vs lokal)
+  syncSettingsUI();
+  // Muat nilai UID Jabar ke input (jika mode lokal)
   loadUIDInputs();
 }
 
