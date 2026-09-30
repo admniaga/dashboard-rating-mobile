@@ -209,9 +209,6 @@ tr.row-ng td.tl{color:var(--red)!important}
   </div>
 </div>
 
-<!-- DEBUG PANEL (hidden until Update sheet parsed) -->
-<div id="updateDebugPanel" style="display:none;margin:8px 14px;padding:10px 12px;background:var(--card);border:1px solid var(--amber);border-radius:8px;color:var(--text2)"></div>
-
 <!-- DATE BAR -->
 <div class="datebar">
   <label>Dari:</label>
@@ -548,6 +545,9 @@ function gDateCell(c){
       const d=c.v;
       return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
     }
+    // Numeric date serial (Google Sheets menyimpan tanggal sebagai angka)
+    // 40000 ≈ 2009, 55000 ≈ 2050 — range wajar untuk tanggal proyek ini
+    if(typeof c.v==='number'&&c.v>40000&&c.v<55000)return excelSerial2Ymd(c.v);
   }
   // Formatted string fallback: "29/09/2026", "2026-09-29", "29 Sep 2026"
   if(c.f){
@@ -803,86 +803,6 @@ function parseUpdate(gviz){
     cacheKeys.join(', ')||'(kosong)');
   _setUpdateBadge(cacheKeys.length);
 
-  // ── Debug panel: tampilkan hasil parse agar mudah diverifikasi ──────────
-  _showUpdateDebug(rows, dateRowCells, dateCols);
-}
-
-function _showUpdateDebug(rows, dateRowCells, dateCols){
-  const el=document.getElementById('updateDebugPanel');
-  if(!el)return;
-
-  // 1. Raw cols 0–20 dari row index 1 (date row)
-  const rawDateRow=[];
-  for(let i=0;i<=20&&i<dateRowCells.length;i++){
-    const c=dateRowCells[i];
-    rawDateRow.push('<b>col'+i+'</b>: '+(c?JSON.stringify(c.v):'—'));
-  }
-
-  // 2. dateCols summary
-  const dcSummary=dateCols.length
-    ? dateCols.map(d=>'col'+d.colIdx+'='+d.ymd).join(', ')
-    : '⚠️ KOSONG – tidak ada tanggal ter-parse!';
-
-  // 3. Raw cols disekitar colIdx=2 dari row data pertama (rows[2])
-  let rawDataRow='—';
-  if(rows.length>2){
-    const rc=(rows[2].c)||[];
-    const colsToShow=[0,1,2,3,4,5,6,7,8,9];
-    rawDataRow=colsToShow.map(i=>'<b>col'+i+'</b>: '+(rc[i]?JSON.stringify(rc[i].v):'—')).join(', ');
-  }
-
-  // 4. Sample S.updateCache Sep29 untuk 3 UP3 pertama
-  const sample29=[];
-  for(const u of ['UP3 BEKASI','UP3 BANDUNG','UP3 MAJALAYA']){
-    const c=S.updateCache[u]&&S.updateCache[u]['2026-09-29'];
-    sample29.push('<b>'+u+'</b>: '+(c?'tgt='+c.target+' real='+c.real+' co='+c.co:'❌ tidak ada'));
-  }
-
-  // 5. Cache keys (UP3 names in cache)
-  const cacheKeys=Object.keys(S.updateCache);
-
-  // 6. Hitung total Sep29 langsung dari c.target/c.real (salin dari sheet Update, tidak dihitung ulang)
-  let totTgt29=0, totReal29=0, totCO29=0;
-  const realDetail29=[];
-  for(const u of UP3S){
-    const c=S.updateCache[u]&&S.updateCache[u]['2026-09-29'];
-    if(!c)continue;
-    totTgt29+=c.target;
-    totReal29+=c.real;
-    totCO29 +=c.co;
-    // ULP sum untuk debug
-    const ulpMap=S.ulp[u];
-    let ulpSum=0;
-    if(ulpMap){for(const ulp of Object.keys(ulpMap))ulpSum+=(ulpMap[ulp]['2026-09-29']||0);}
-    realDetail29.push('<b>'+u.replace('UP3 ','')+'</b>: tgt='+c.target+' real='+c.real+' co='+c.co+' ulp='+ulpSum);
-  }
-
-  // 7. ULP keys di S.ulp + rekap debug
-  const ulpKeys=Object.keys(S.ulp||{});
-  const rekapDbg=(S._rekapDebug||'belum dimuat / masih loading').replace(/\n/g,'<br>');
-
-  el.innerHTML=`
-    <div style="font-size:11px;line-height:1.7">
-      <b style="color:var(--acc)">🔍 DEBUG: Update Sheet Parse</b><br>
-      <b>dateCols (${dateCols.length}):</b> ${dcSummary}<br>
-      <b>UP3 di cache (${cacheKeys.length}):</b> ${cacheKeys.join(', ')||'kosong'}<br>
-      <b>Row date (baris 2 sheet) col 0-20:</b> ${rawDateRow.join(' | ')}<br>
-      <b>Row data pertama (baris 3 sheet) col 0-9:</b> ${rawDataRow}<br>
-      <b>Cache Sep29 sample:</b> ${sample29.join(' | ')}<br>
-      <hr style="margin:4px 0;border-color:var(--brd)">
-      <b>Sep29 TOTAL (Update sheet langsung):</b>
-        tgt=<b style="color:${Math.abs(totTgt29-2211)<5?'var(--green)':'var(--red)'}">${totTgt29}</b>
-        real=<b style="color:${Math.abs(totReal29-1782)<5?'var(--green)':'var(--red)'}">${totReal29}</b>
-        co=<b>${totCO29}</b>
-        <span style="opacity:.7">(exp tgt≈2211, exp real≈1782)</span><br>
-      <b>Per UP3 Sep29 (tgt/real/co/ulp29):</b><br>
-        <span style="font-size:10px">${realDetail29.join('<br>')}</span>
-      <hr style="margin:4px 0;border-color:var(--brd)">
-      <b>S.ulp: ${ulpKeys.length} UP3 (${ulpKeys.join(', ')||'kosong'})</b><br>
-      <b>Sheet rekap debug:</b><br>
-      <span style="font-size:10px">${rekapDbg}</span>
-    </div>`;
-  el.style.display='';
 }
 
 function _setUpdateBadge(cnt){
@@ -900,58 +820,102 @@ function _setUpdateBadge(cnt){
   el.style.display='';
 }
 
-// Ambil realisasi UP3 untuk curDays (Sep30+) saja — dari rekap_new.
-// Untuk histDays (≤ Sep29), realisasi dibaca langsung dari c.real di computeRange.
+// Realisasi UP3 untuk curDays (Sep30+) — dari rekap_new.
 function getRealFor(up3,ymd){
   return (S.rekap[up3]&&S.rekap[up3][ymd])||0;
 }
 
+// Realisasi UP3 untuk histDays (≤ Sep29):
+// Prioritas 1: sum ULP dari S.ulp (sheet rekap — lebih lengkap dari form responses)
+// Prioritas 2: c.real dari sheet Update (fallback jika rekap belum terisi)
+function getHistReal(up3,ymd){
+  const ulpMap=S.ulp[up3];
+  if(ulpMap){
+    let sum=0;
+    for(const ulp of Object.keys(ulpMap)) sum+=(ulpMap[ulp][ymd]||0);
+    if(sum>0)return sum;
+  }
+  const c=S.updateCache[up3]&&S.updateCache[up3][ymd];
+  return c?c.real:0;
+}
+
 // ══════════════════════════════════════════════
-//  PARSE rekap (sheet lama) — ULP historis ≤ BATAS_UPDATE
-//  Format LONG: UP3 | ULP | tanggal | jumlah
-//  Isi S.ulp untuk tanggal ≤ BATAS_UPDATE
+//  PARSE rekap (sheet WIDE) — ULP historis ≤ BATAS_UPDATE
+//
+//  Format sheet rekap:
+//    Baris awal   : ringkasan UP3 + total UID JABAR (sebelum header → di-skip)
+//    Baris header : col A = "Unit", col 1+ = tanggal ("24/09/2026", dst.)
+//    Baris data   : col A = nama UP3 (jika cocok UP3S → group header)
+//                         = nama ULP (jika tidak cocok → data ULP)
+//
+//  Hasil : S.ulp[up3][ulpName][ymd] = jumlah (hanya ≤ BATAS_UPDATE)
 // ══════════════════════════════════════════════
 function parseRekapOld(gviz){
-  if(!gviz||!gviz.table){
-    console.warn('[rekap] GAGAL: gviz/table kosong');
-    S._rekapDebug='GAGAL: no table';
+  if(!gviz||!gviz.table) return;
+  const rows=gviz.table.rows||[];
+  if(!rows.length) return;
+
+  // ── 1. Bangun ULP→UP3 dari ulpMaster jika sudah tersedia ──────────────────
+  const ulp2up3={};
+  for(const up3 of Object.keys(S.ulpMaster)){
+    for(const ulp of (S.ulpMaster[up3]||[])) ulp2up3[ulp.toUpperCase().trim()]=up3;
+  }
+  const hasMaster=Object.keys(ulp2up3).length>0;
+
+  // ── 2. Cari baris header: col A = "UNIT" + kolom-kolom tanggal ────────────
+  let headerRowIdx=-1;
+  const dateCols=[]; // [{colIdx, ymd}]
+
+  for(let r=0;r<rows.length;r++){
+    if(gStr(rows[r],0).trim().toUpperCase()!=='UNIT') continue;
+    const cells=rows[r].c||[];
+    const found=[];
+    for(let i=1;i<cells.length;i++){
+      const ymd=gDateCell(cells[i]);
+      if(ymd&&ymd>=CALC_EPOCH&&ymd<=BATAS_UPDATE) found.push({colIdx:i,ymd});
+    }
+    if(found.length){headerRowIdx=r; dateCols.push(...found); break;}
+  }
+
+  if(headerRowIdx<0||!dateCols.length){
+    console.warn('[rekap] WIDE: baris header "Unit" tidak ditemukan atau tidak ada kolom tanggal. rows='+rows.length);
     return;
   }
-  const rows=gviz.table.rows||[];
-  console.log('[rekap] total baris:',rows.length);
-  // Simpan sample 5 baris pertama untuk debug panel
-  const sample=[];
-  for(let i=0;i<Math.min(5,rows.length);i++){
-    const row=rows[i];
-    const cells=(row.c||[]).slice(0,5).map((c,j)=>{
-      if(!c)return j+':null';
-      const raw=c.v;
-      return j+':'+(raw instanceof Date?'Date('+raw.toISOString().slice(0,10)+')':JSON.stringify(raw));
-    });
-    sample.push('Row'+i+': '+cells.join(' | '));
-  }
-  S._rekapDebug='Rows:'+rows.length+'\n'+sample.join('\n');
-  console.log('[rekap] sample:\n'+S._rekapDebug);
+  console.log('[rekap] WIDE: headerRow='+headerRowIdx+
+              ', tanggal='+dateCols.length+
+              ' ('+dateCols[0].ymd+'..'+dateCols[dateCols.length-1].ymd+')');
 
-  let cnt=0, skippedDate=0, skippedFuture=0, skippedZero=0;
-  for(const row of rows){
-    const up3=gStr(row,0).toUpperCase().trim();
-    const ulp=gStr(row,1).toUpperCase().trim();
-    if(!up3||!ulp)continue;
-    const ymd=gDateCell((row.c||[])[2]);
-    if(!ymd){skippedDate++;continue;}
-    if(ymd>BATAS_UPDATE){skippedFuture++;continue;}
-    const v=parseInt(gVal(row,3))||0;
-    if(!v){skippedZero++;continue;}
-    if(!S.ulp[up3])S.ulp[up3]={};
-    if(!S.ulp[up3][ulp])S.ulp[up3][ulp]={};
-    S.ulp[up3][ulp][ymd]=(S.ulp[up3][ulp][ymd]||0)+v;
-    cnt++;
+  // ── 3. Parse baris data di bawah header ───────────────────────────────────
+  let currentUP3='', cnt=0;
+
+  for(let r=headerRowIdx+1;r<rows.length;r++){
+    const name=gStr(rows[r],0).toUpperCase().trim();
+    if(!name) continue;
+
+    // Baris group header UP3 (nama cocok daftar UP3S)
+    if(UP3S.includes(name)){currentUP3=name; continue;}
+
+    // Tentukan UP3: prioritas ulpMaster jika tersedia, fallback group tracking
+    const up3=hasMaster?(ulp2up3[name]||currentUP3):currentUP3;
+    if(!up3||!UP3S.includes(up3)) continue;
+
+    // Skip baris total yang bukan ULP individual
+    if(name.startsWith('TOTAL')||name.startsWith('JUMLAH')||
+       name.startsWith('UID ')||name==='GRAND TOTAL'||name==='SUBTOTAL') continue;
+
+    // Baca nilai tiap kolom tanggal
+    for(const {colIdx,ymd} of dateCols){
+      const v=parseInt(gVal(rows[r],colIdx))||0;
+      if(!v) continue;
+      if(!S.ulp[up3]) S.ulp[up3]={};
+      if(!S.ulp[up3][name]) S.ulp[up3][name]={};
+      S.ulp[up3][name][ymd]=(S.ulp[up3][name][ymd]||0)+v;
+      cnt++;
+    }
   }
-  S._rekapDebug+='\nParsed:'+cnt+' ok | tanggalGagal:'+skippedDate+' | future:'+skippedFuture+' | nol:'+skippedZero;
-  S._rekapDebug+='\nS.ulp UP3: '+(Object.keys(S.ulp).join(', ')||'(kosong)');
-  console.log('[rekap] parsed',cnt,'rows. tanggalGagal='+skippedDate,'future='+skippedFuture,'nol='+skippedZero);
-  console.log('[rekap] S.ulp UP3 keys:',Object.keys(S.ulp).join(', ')||'(kosong)');
+
+  console.log('[rekap] WIDE: '+cnt+' entri ULP-tanggal tersimpan. UP3:',
+              Object.keys(S.ulp).join(', ')||'(kosong)');
 }
 
 // ══════════════════════════════════════════════
@@ -1009,17 +973,18 @@ function computeRange(fromYmd,toYmd){
   const histDays=days.filter(d=>d<=BATAS_UPDATE);
   const curDays =days.filter(d=>d>BATAS_UPDATE);
 
-  // ─── HISTORIS ≤ Sep29: SALIN LANGSUNG dari S.updateCache (sheet Update) ──
-  // Tidak ada kalkulasi ulang. target, real, CO semuanya dari kolom sheet Update.
-  // runCO di-overwrite setiap hari; hasil akhir = CO dari hari terakhir histDays.
+  // ─── HISTORIS ≤ Sep29: SALIN dari sheet Update + real dari rekap ──────────
+  // Target & CO : c.target / c.co langsung dari sheet Update (tidak dihitung ulang)
+  // Real        : getHistReal → S.ulp (rekap WIDE) first, fallback c.real
+  // runCO di-overwrite tiap hari; akhir = CO dari hari terakhir histDays
   for(const ymd of histDays){
     for(const u of UP3S){
       const c=S.updateCache[u]&&S.updateCache[u][ymd];
       if(!c)continue;
-      totEff[u] +=c.target;  // target efektif dari Update sheet (sudah include CO lama)
       totBase[u]+=c.target;
-      totReal[u]+=c.real;    // realisasi langsung dari Update sheet
-      runCO[u]   =c.co;      // CO langsung dari Update sheet (overwrite; terakhir = CO aktif)
+      totEff[u] +=c.target;
+      totReal[u]+=getHistReal(u,ymd); // S.ulp first (rekap sheet) → c.real fallback
+      runCO[u]  =c.co;
     }
   }
 
@@ -1377,11 +1342,11 @@ function loadData(){
     try{
       parseTargets(res.s01);
       parseRekap(res.rekap);
-      // ULP: parseRekapOld DULU (historis ≤ BATAS_UPDATE), lalu rekap_ulp (> BATAS_UPDATE)
+      // ULP: ulpMaster DULU (supaya tersedia saat rekapOld diparsing), lalu rekap, lalu rekap_ulp
       // Keduanya bisa kosong saat ini (bonus non-blocking), akan re-render saat tiba
+      if(res.ulpup3)parseUlpMaster(res.ulpup3);
       if(res.rekapOld)parseRekapOld(res.rekapOld);
       if(res.rekapulp)parseRekapUlp(res.rekapulp);
-      if(res.ulpup3)parseUlpMaster(res.ulpup3);
       if(res.updateSheet){
         parseUpdate(res.updateSheet);
       } else {
@@ -1411,8 +1376,9 @@ function loadData(){
     errs.push(e); done(); // tetap lanjut render meski Update gagal
   }, 25000); // timeout 25 detik (sheet besar)
   // BONUS — tidak blokir; kalau sheet belum siap/gagal → abaikan, re-render setelah tiba
-  // "rekap" (sheet lama) → ULP historis ≤ BATAS_UPDATE. Di-merge ke S.ulp sebelum rekap_ulp.
-  fetchGviz('rekap','A:D',j=>{
+  // "rekap" (sheet WIDE) → ULP historis ≤ BATAS_UPDATE.
+  // Range A:BZ agar semua kolom tanggal (Aug–Sep) terjangkau (kolom bisa sampai ~AN-AT = index 40-46)
+  fetchGviz('rekap','A:BZ',j=>{
     res.rekapOld=j;
     if(S.loaded){parseRekapOld(j);renderAll();}
   },e=>{console.warn('[rekap-old] tidak terbaca:',e.message);});
@@ -1421,7 +1387,16 @@ function loadData(){
     res.rekapulp=j;
     if(S.loaded){parseRekapUlp(j);renderAll();}
   },e=>{});
-  fetchGviz('UP3-ULP','A1:B200',j=>{res.ulpup3=j;if(S.loaded){parseUlpMaster(j);renderAll();}},e=>{});
+  fetchGviz('UP3-ULP','A1:B200',j=>{
+    res.ulpup3=j;
+    parseUlpMaster(j);
+    // Jika rekap sudah di-parse sebelumnya (tanpa ulpMaster), ulangi parsing-nya
+    if(S.loaded){
+      if(res.rekapOld){S.ulp={};parseRekapOld(res.rekapOld);}
+      if(res.rekapulp)parseRekapUlp(res.rekapulp);
+      renderAll();
+    }
+  },e=>{});
 }
 
 // ══════════════════════════════════════════════
