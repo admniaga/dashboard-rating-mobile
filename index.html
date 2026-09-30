@@ -205,6 +205,7 @@ tr.row-ng td.tl{color:var(--red)!important}
   <div class="hdr-b">
     <span>Update: <b id="lastUpdate">—</b></span>
     <span id="statusMsg">Menginisialisasi...</span>
+    <span id="updateBadge" style="display:none;border-radius:999px;padding:1px 8px;font-size:10px;font-weight:600"></span>
   </div>
 </div>
 
@@ -488,14 +489,14 @@ function dayBefore(ymd){
 // ══════════════════════════════════════════════
 //  GVIZ FETCH
 // ══════════════════════════════════════════════
-function fetchGviz(sheet, range, onData, onErr){
+function fetchGviz(sheet, range, onData, onErr, timeoutMs){
   const cb='gviz_'+Math.floor(Math.random()*1e9);
   let done=false;
   const scr=document.createElement('script');
   const tmr=setTimeout(()=>{
     if(done)return; done=true; cleanup();
     onErr(new Error('Timeout sheet: '+sheet));
-  },8000);
+  }, timeoutMs||8000);
   function cleanup(){
     clearTimeout(tmr);
     try{delete window[cb];}catch(e){window[cb]=undefined;}
@@ -677,9 +678,10 @@ function excelSerial2Ymd(serial){
 
 function parseUpdate(gviz){
   S.updateReal={};
-  if(!gviz||!gviz.table)return;
+  if(!gviz||!gviz.table){console.warn('[Update] gviz kosong atau tidak ada table');return;}
   const rows=gviz.table.rows||[];
-  if(rows.length<3)return;
+  console.log('[Update] total rows:',rows.length);
+  if(rows.length<3){console.warn('[Update] rows<3, tidak ada data');return;}
 
   // Row index 1 = spreadsheet baris 2 → berisi serial tanggal di col 2+7n
   const dateRowCells=(rows[1].c)||[];
@@ -708,6 +710,13 @@ function parseUpdate(gviz){
     if(!ymd||ymd>BATAS_UPDATE)continue;
     dateCols.push({colIdx:i,ymd});
   }
+  console.log('[Update] dateCols ditemukan:',dateCols.length, dateCols.map(d=>d.ymd).join(', ')||'(kosong)');
+  if(!dateCols.length){
+    console.warn('[Update] Tidak ada kolom tanggal yang terbaca. Cek format row 2 sheet Update.');
+    // Debug: tampilkan 10 cell pertama row 2
+    const dbg=dateRowCells.slice(0,15).map((c,i)=>i+':'+JSON.stringify(c&&c.v)).join(' | ');
+    console.warn('[Update] Row 2 (idx 0-14):',dbg);
+  }
 
   // Baris data (index 2+)
   for(let r=2;r<rows.length;r++){
@@ -725,6 +734,25 @@ function parseUpdate(gviz){
       S.updateReal[up3][ymd]=(S.updateReal[up3][ymd]||0)+real;
     }
   }
+  const up3Keys=Object.keys(S.updateReal);
+  console.log('[Update] S.updateReal: '+up3Keys.length+' UP3 →', up3Keys.join(', ')||'(kosong)');
+  // Update status indikator
+  _setUpdateBadge(up3Keys.length);
+}
+
+function _setUpdateBadge(cnt){
+  const el=document.getElementById('updateBadge');
+  if(!el)return;
+  if(cnt>0){
+    el.textContent='📋 Hist: '+cnt+' UP3';
+    el.style.background='rgba(74,222,128,.18)';
+    el.style.color='var(--green)';
+  } else {
+    el.textContent='⚠️ Hist: tidak ada';
+    el.style.background='rgba(251,191,36,.18)';
+    el.style.color='var(--amber)';
+  }
+  el.style.display='';
 }
 
 // Ambil realisasi: untuk tanggal ≤ BATAS_UPDATE → prioritaskan sheet Update;
@@ -1120,12 +1148,13 @@ function loadData(){
   document.getElementById('ulpSec').innerHTML=
     '<div class="msg-box" style="background:var(--card);border:1px solid var(--border);border-radius:9px"><div class="spin"></div>Memuat...</div>';
 
-  // 2 sheet KRITIS (blokir render): rekap_new + 01
-  let res={}, errs=[], pend=2;
+  // 3 sheet KRITIS (blokir render): rekap_new + 01 + Update (historis)
+  let res={}, errs=[], pend=3;
   function done(){
     pend--;
     if(pend>0)return;
-    if(errs.length>=2){
+    // Jika hanya Update yang gagal (errs=1), tetap lanjut tapi tampilkan warning
+    if(errs.length>=2 && !res.s01){
       const m=errs[0].message;
       setStatus('❌ '+m);
       document.getElementById('mainBody').innerHTML=
@@ -1137,7 +1166,12 @@ function loadData(){
       parseRekap(res.rekap);
       if(res.rekapulp)parseRekapUlp(res.rekapulp);
       if(res.ulpup3)parseUlpMaster(res.ulpup3);
-      if(res.updateSheet)parseUpdate(res.updateSheet);
+      if(res.updateSheet){
+        parseUpdate(res.updateSheet);
+      } else {
+        console.warn('[loadData] Sheet Update tidak terbaca — realisasi s.d. Sep 29 dari rekap_new saja');
+        _setUpdateBadge(0);
+      }
       S.loaded=true;
       document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('id-ID');
       setStatus('✅ Data dimuat · '+Object.keys(S.targets).length+' UP3');
@@ -1152,14 +1186,17 @@ function loadData(){
   // KRITIS — blokir render
   fetchGviz('rekap_new','A:C',j=>{res.rekap=j;done();},e=>{errs.push(e);done();});
   fetchGviz('01','A1:L19',j=>{res.s01=j;done();},e=>{errs.push(e);done();});
+  // KRITIS — Sheet Update (timeout lebih lama karena sheet besar ~300+ kolom)
+  fetchGviz('Update','A1:ZZ200',j=>{
+    console.log('[Update] fetch berhasil, rows:', j&&j.table&&j.table.rows&&j.table.rows.length);
+    res.updateSheet=j; done();
+  },e=>{
+    console.warn('[Update] fetch gagal:',e.message);
+    errs.push(e); done(); // tetap lanjut render meski Update gagal
+  }, 25000); // timeout 25 detik (sheet besar)
   // BONUS — tidak blokir; kalau sheet belum siap/gagal → abaikan, re-render setelah tiba
   fetchGviz('rekap_ulp','A:D',j=>{res.rekapulp=j;if(S.loaded){parseRekapUlp(j);renderAll();}},e=>{});
   fetchGviz('UP3-ULP','A1:B200',j=>{res.ulpup3=j;if(S.loaded){parseUlpMaster(j);renderAll();}},e=>{});
-  // Sheet Update: realisasi historis s.d. Sep 29 (wide format, ~100 kolom)
-  fetchGviz('Update','A1:ZZ200',j=>{
-    res.updateSheet=j;
-    if(S.loaded){parseUpdate(j);renderAll();}
-  },e=>{/* bonus: abaikan jika gagal */});
 }
 
 // ══════════════════════════════════════════════
