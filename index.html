@@ -1115,14 +1115,9 @@ function computeRange(fromYmd,toYmd){
             sel:totReal[u]-totEff[u], co:runCO[u], tgt1};
   });
 
-  // Sort: tercapai (hijau) dahulu, lalu tidak tercapai (merah); dalam grup sort real desc
-  rows.sort((a,b)=>{
-    const aTgt=a.u==='KANTOR UID JABAR'?a.base:a.eff;
-    const bTgt=b.u==='KANTOR UID JABAR'?b.base:b.eff;
-    const aOk=a.real>=aTgt, bOk=b.real>=bTgt;
-    if(aOk!==bOk) return aOk?-1:1;
-    return b.real-a.real;
-  });
+  // Sort: selisih terbesar ke terkecil (positif/melebihi target paling atas,
+  // paling minus/tertinggal paling bawah)
+  rows.sort((a,b)=>b.sel-a.sel);
 
   // Totals
   const tot={base:0,eff:0,real:0,sel:0,co:0,tgt1:0};
