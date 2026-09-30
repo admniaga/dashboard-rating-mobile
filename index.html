@@ -249,46 +249,81 @@ tr.row-ng td.tl{color:var(--red)!important}
   <!-- SETTINGS (collapsible) -->
   <div class="settings" id="settingsPanel">
 
-    <h3>🎯 Periode Target (kolom sheet "01")</h3>
-    <p class="sinfo" style="margin-bottom:6px">
-      Jika target berubah, tambah periode baru — tidak mengubah periode sebelumnya.<br>
-      Contoh: Kolom G = weekend, H = weekday → isi "G" dan "H".
+    <!-- ── BAGIAN PUBLIK: Target Kantor UID Jabar (tanpa PIN) ── -->
+    <h3>🏢 Target Kantor UID Jabar</h3>
+    <p class="sinfo" style="margin-bottom:8px">
+      Isi target harian manual untuk Kantor UID Jabar. Disimpan di browser ini.
     </p>
-    <div id="tpList" style="margin-bottom:8px;display:flex;flex-direction:column;gap:4px"></div>
-    <div class="add-row" style="flex-wrap:wrap;gap:6px;margin-bottom:4px">
-      <input type="date" id="tpFrom" placeholder="Mulai tgl" style="font-size:11px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
-      <input type="text" id="tpWE" placeholder="Kol Weekend (cth: G)" maxlength="2"
-        style="width:120px;font-size:11px;font-family:monospace;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text);text-transform:uppercase">
-      <input type="text" id="tpWD" placeholder="Kol Weekday (cth: H)" maxlength="2"
-        style="width:130px;font-size:11px;font-family:monospace;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text);text-transform:uppercase">
-      <button class="btn btn-blue" onclick="addTP()">+ Tambah Periode</button>
+    <div class="add-row" style="flex-wrap:wrap;gap:8px;margin-bottom:6px;align-items:center">
+      <label style="font-size:12px;font-weight:600;white-space:nowrap">Hari Kerja:</label>
+      <input type="number" id="uidWD" min="0" step="1" placeholder="0"
+        style="width:100px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+      <label style="font-size:12px;font-weight:600;white-space:nowrap">Weekend/Libur:</label>
+      <input type="number" id="uidWE" min="0" step="1" placeholder="0"
+        style="width:100px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+      <button class="btn btn-blue" onclick="saveUIDTgt()">💾 Simpan</button>
     </div>
-    <p class="sinfo" style="margin-bottom:12px">⚠️ Urutan diurutkan otomatis. Periode terakhir berlaku sampai seterusnya.</p>
+    <p class="sinfo" id="uidTargetInfo" style="margin-bottom:12px">—</p>
 
-    <h3>📅 Hari Libur / Tanggal Merah — dianggap sebagai Weekend (target kolom G)</h3>
-    <div class="hol-chips" id="holChips"></div>
-    <div class="add-row">
-      <label style="font-size:11px;font-weight:600">Tambah:</label>
-      <input type="date" id="newHol">
-      <button class="btn btn-blue" onclick="addHol()">+ Tambah</button>
+    <!-- ── PEMISAH: Pengaturan Lanjutan (butuh PIN) ── -->
+    <div id="advancedPinSection" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+      <h3>🔐 Pengaturan Lanjutan</h3>
+      <p class="sinfo" style="margin-bottom:8px">Masukkan PIN untuk mengelola periode target &amp; hari libur.</p>
+      <div class="add-row" style="gap:8px;margin-bottom:4px">
+        <input type="password" id="advPinInput" maxlength="20" placeholder="Masukkan PIN…"
+          onkeydown="if(event.key==='Enter')unlockAdvanced()"
+          style="width:160px;font-size:13px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;
+          background:var(--bg);color:var(--text);letter-spacing:3px;text-align:center">
+        <button class="btn btn-p" onclick="unlockAdvanced()">🔓 Buka</button>
+      </div>
+      <p id="advPinErr" style="display:none;color:var(--red);font-size:12px">❌ PIN salah, coba lagi</p>
     </div>
-    <p class="sinfo">
-      ✅ Sheet rekap <b>otomatis</b> diisi dari form response — tidak perlu update manual.<br>
-      ✅ Target diambil dari sheet "01": kolom G = Weekend/Libur, kolom H = Hari Kerja.<br>
-      ℹ️ Sabtu &amp; Minggu + tanggal di atas otomatis pakai target weekend (kolom G).
-    </p>
 
-    <h3>🔐 Ubah PIN Pengaturan</h3>
-    <p class="sinfo" style="margin-bottom:8px">PIN digunakan untuk membuka panel pengaturan ini. PIN awal: <b>1234</b> — segera ubah.</p>
-    <div class="add-row" style="flex-wrap:wrap;gap:6px;margin-bottom:4px">
-      <input type="password" id="pinNewInput" placeholder="PIN baru (min 4 karakter)" maxlength="20"
-        style="flex:1;min-width:140px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
-      <input type="password" id="pinConfirmInput" placeholder="Konfirmasi PIN baru" maxlength="20"
-        style="flex:1;min-width:140px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
-      <button class="btn btn-blue" onclick="changePIN()">Ubah PIN</button>
-    </div>
-    <p class="sinfo">⚠️ PIN disimpan di browser ini. Jika browser direset, PIN kembali ke <b>1234</b>.</p>
-  </div>
+    <!-- ── ADVANCED (muncul setelah PIN benar) ── -->
+    <div id="advancedSettings" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:8px">
+
+      <h3>🎯 Periode Target (kolom sheet "01")</h3>
+      <p class="sinfo" style="margin-bottom:6px">
+        Jika target berubah, tambah periode baru — tidak mengubah periode sebelumnya.<br>
+        Contoh: Kolom K = weekend, L = weekday → isi "K" dan "L".
+      </p>
+      <div id="tpList" style="margin-bottom:8px;display:flex;flex-direction:column;gap:4px"></div>
+      <div class="add-row" style="flex-wrap:wrap;gap:6px;margin-bottom:4px">
+        <input type="date" id="tpFrom" placeholder="Mulai tgl" style="font-size:11px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+        <input type="text" id="tpWE" placeholder="Kol Weekend (cth: K)" maxlength="2"
+          style="width:120px;font-size:11px;font-family:monospace;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text);text-transform:uppercase">
+        <input type="text" id="tpWD" placeholder="Kol Weekday (cth: L)" maxlength="2"
+          style="width:130px;font-size:11px;font-family:monospace;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text);text-transform:uppercase">
+        <button class="btn btn-blue" onclick="addTP()">+ Tambah Periode</button>
+      </div>
+      <p class="sinfo" style="margin-bottom:12px">⚠️ Urutan diurutkan otomatis. Periode terakhir berlaku sampai seterusnya.</p>
+
+      <h3>📅 Hari Libur / Tanggal Merah — dianggap sebagai Weekend</h3>
+      <div class="hol-chips" id="holChips"></div>
+      <div class="add-row">
+        <label style="font-size:11px;font-weight:600">Tambah:</label>
+        <input type="date" id="newHol">
+        <button class="btn btn-blue" onclick="addHol()">+ Tambah</button>
+      </div>
+      <p class="sinfo">
+        ✅ Sheet rekap <b>otomatis</b> diisi dari form response dan sheet Update.<br>
+        ℹ️ Sabtu &amp; Minggu + tanggal di atas otomatis pakai target weekend.
+      </p>
+
+      <h3>🔐 Ubah PIN Pengaturan</h3>
+      <p class="sinfo" style="margin-bottom:8px">PIN awal: <b>1234</b> — segera ubah setelah pertama kali.</p>
+      <div class="add-row" style="flex-wrap:wrap;gap:6px;margin-bottom:4px">
+        <input type="password" id="pinNewInput" placeholder="PIN baru (min 4 karakter)" maxlength="20"
+          style="flex:1;min-width:140px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+        <input type="password" id="pinConfirmInput" placeholder="Konfirmasi PIN baru" maxlength="20"
+          style="flex:1;min-width:140px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text)">
+        <button class="btn btn-blue" onclick="changePIN()">Ubah PIN</button>
+      </div>
+      <p class="sinfo">⚠️ PIN disimpan di browser ini. Jika browser direset, PIN kembali ke <b>1234</b>.</p>
+
+    </div><!-- /advancedSettings -->
+
+  </div><!-- /settingsPanel -->
 
   <!-- SUMMARY CARDS -->
   <div class="cards">
@@ -365,6 +400,9 @@ tr.row-ng td.tl{color:var(--red)!important}
 //  CONSTANTS
 // ══════════════════════════════════════════════
 const SHEET_ID = "1o60PPGUmsC2X0FVwoVdKuR3ePIMfqRxB0_0Vf0w_rMo";
+// Titik awal mutlak untuk warm-up carry-over.
+// Sesuaikan jika data rekap_new ada dari bulan sebelumnya.
+const CALC_EPOCH = "2026-08-01";
 try{localStorage.removeItem('rating_sheetid');}catch(e){}
 function getSheetId(){ return SHEET_ID; }
 
@@ -396,10 +434,11 @@ const DEF_HOL = [
 let selUlpUp3 = 'SEMUA'; // ULP filter state
 
 const S = {
-  targets:{},    // { "UP3 BEKASI": [v0,v1,...] }  full row dari sheet 01
-  rekap:{},      // { "UP3 BEKASI": { "2026-09-29": N } }
-  ulp:{},        // { "UP3 BEKASI": { "ULP BEKASI KOTA": { "2026-09-29": N } } }
-  ulpMaster:{},  // { "UP3 BEKASI": ["ULP BEKASI KOTA", ...] } dari sheet UP3-ULP
+  targets:{},     // { "UP3 BEKASI": [v0,v1,...] }  full row dari sheet 01
+  rekap:{},       // { "UP3 BEKASI": { "2026-09-29": N } }  dari rekap_new (form responses > Sep29)
+  updateReal:{},  // { "UP3 BEKASI": { "2026-09-29": N } }  dari sheet Update (s.d. Sep29)
+  ulp:{},         // { "UP3 BEKASI": { "ULP BEKASI KOTA": { "2026-09-29": N } } }
+  ulpMaster:{},   // { "UP3 BEKASI": ["ULP BEKASI KOTA", ...] } dari sheet UP3-ULP
   holidays: loadHol(),
   loaded: false
 };
@@ -554,7 +593,44 @@ function parseTargets(gviz){
   }
 }
 
+// ── Target manual Kantor UID Jabar ──
+const UID_WD_KEY='rating_uid_wd'; // target hari kerja
+const UID_WE_KEY='rating_uid_we'; // target weekend/libur
+function getUIDTgt(we){
+  try{
+    const v=localStorage.getItem(we?UID_WE_KEY:UID_WD_KEY);
+    return v!=null?parseInt(v)||0:0;
+  }catch(e){return 0;}
+}
+function saveUIDTgt(){
+  const wd=parseInt(document.getElementById('uidWD').value)||0;
+  const we=parseInt(document.getElementById('uidWE').value)||0;
+  try{localStorage.setItem(UID_WD_KEY,String(wd));localStorage.setItem(UID_WE_KEY,String(we));}catch(e){}
+  renderUIDInfo();
+  toast('✅ Target Kantor UID Jabar disimpan');
+  if(S.loaded)renderAll();
+}
+function renderUIDInfo(){
+  const el=document.getElementById('uidTargetInfo');
+  if(!el)return;
+  const wd=getUIDTgt(false), we=getUIDTgt(true);
+  if(!wd&&!we){el.textContent='⚠️ Belum diisi — baris Kantor UID Jabar tidak ada target.';el.style.color='var(--amber)';}
+  else{el.textContent='✅ Weekday: '+wd+' · Weekend: '+we;el.style.color='var(--green)';}
+}
+function loadUIDInputs(){
+  const wdEl=document.getElementById('uidWD');
+  const weEl=document.getElementById('uidWE');
+  if(!wdEl||!weEl)return;
+  const wd=getUIDTgt(false), we=getUIDTgt(true);
+  wdEl.value=wd||'';
+  weEl.value=we||'';
+  renderUIDInfo();
+}
+
 function baseTgt(up3,ymd){
+  if(up3==='KANTOR UID JABAR'){
+    return getUIDTgt(isWE(ymd));
+  }
   const vals=S.targets[up3]||[];
   const p=getTP(ymd);
   const we=vals[p.weIdx]||0;
@@ -580,6 +656,85 @@ function parseRekap(gviz){
     if(!S.rekap[name])S.rekap[name]={};
     S.rekap[name][ymd]=(S.rekap[name][ymd]||0)+v;
   }
+}
+
+// ══════════════════════════════════════════════
+//  PARSE sheet Update  (format WIDE, realisasi s.d. BATAS_UPDATE)
+//  Row 1 (index 0): kosong
+//  Row 2 (index 1): date serial Excel di col 2+7n  (0-indexed)
+//  Row 3+ (index 2+): data UP3 per 7-kolom group
+//    Col 1+7n = UP3, col 2+7n = target (row 2 = date serial), col 3+7n = realisasi
+// ══════════════════════════════════════════════
+const BATAS_UPDATE = '2026-09-29'; // realisasi ≤ tgl ini diambil dari sheet Update
+
+function excelSerial2Ymd(serial){
+  // Excel/Sheets serial date: epoch = Dec 30, 1899
+  const msPerDay=86400000;
+  const epoch=new Date(1899,11,30); // local Dec 30, 1899
+  const d=new Date(epoch.getTime()+Math.round(serial)*msPerDay);
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+function parseUpdate(gviz){
+  S.updateReal={};
+  if(!gviz||!gviz.table)return;
+  const rows=gviz.table.rows||[];
+  if(rows.length<3)return;
+
+  // Row index 1 = spreadsheet baris 2 → berisi serial tanggal di col 2+7n
+  const dateRowCells=(rows[1].c)||[];
+  const dateCols=[]; // [{colIdx, ymd}]
+  for(let i=2;i<dateRowCells.length;i++){
+    if((i-2)%7!==0)continue; // pattern: 2,9,16,23…
+    const c=dateRowCells[i];
+    if(!c||c.v==null)continue;
+    let ymd='';
+    // c.v bisa berupa angka serial atau string tanggal
+    const sv=String(c.v);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(sv)){
+      ymd=sv;
+    } else if(/Date\(/.test(sv)){
+      const dm=sv.match(/Date\((\d+),(\d+),(\d+)\)/);
+      if(dm)ymd=dm[1]+'-'+pad(+dm[2]+1)+'-'+pad(+dm[3]);
+    } else {
+      const n=parseFloat(sv);
+      if(!isNaN(n)&&n>40000)ymd=excelSerial2Ymd(n); // sanity check angka masuk akal
+    }
+    // Jika ada format tanggal di c.f (formatted)
+    if(!ymd&&c.f){
+      const m=String(c.f).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if(m)ymd=m[3]+'-'+pad(+m[2])+'-'+pad(+m[1]);
+    }
+    if(!ymd||ymd>BATAS_UPDATE)continue;
+    dateCols.push({colIdx:i,ymd});
+  }
+
+  // Baris data (index 2+)
+  for(let r=2;r<rows.length;r++){
+    const rc=(rows[r].c)||[];
+    for(const {colIdx,ymd} of dateCols){
+      const up3Col=colIdx-1;  // 1+7n
+      const realCol=colIdx+1; // 3+7n
+      const up3Cell=rc[up3Col];
+      const realCell=rc[realCol];
+      const up3=up3Cell?(up3Cell.f!=null?String(up3Cell.f):String(up3Cell.v||'')).toUpperCase().trim():'';
+      if(!up3)continue;
+      const real=realCell?parseFloat(realCell.v)||0:0;
+      if(!real)continue;
+      if(!S.updateReal[up3])S.updateReal[up3]={};
+      S.updateReal[up3][ymd]=(S.updateReal[up3][ymd]||0)+real;
+    }
+  }
+}
+
+// Ambil realisasi: untuk tanggal ≤ BATAS_UPDATE → prioritaskan sheet Update;
+// jika tidak ada data di Update → fallback ke rekap_new.
+function getRealFor(up3,ymd){
+  if(ymd<=BATAS_UPDATE&&S.updateReal[up3]){
+    const v=S.updateReal[up3][ymd];
+    if(v!=null)return v;
+  }
+  return (S.rekap[up3]&&S.rekap[up3][ymd])||0;
 }
 
 // ══════════════════════════════════════════════
@@ -614,21 +769,22 @@ function parseRekapUlp(gviz){
 //  COMPUTE for a date range
 // ══════════════════════════════════════════════
 function computeRange(fromYmd,toYmd){
-  // Pre-compute carry-over from start of month so CO entering the range is correct
-  const monthStart=fromYmd.slice(0,7)+'-01';
+  // Pre-compute carry-over dari CALC_EPOCH agar CO yang masuk ke fromYmd sudah benar,
+  // termasuk carry-over dari bulan-bulan sebelumnya.
+  const warmStart=CALC_EPOCH<fromYmd?CALC_EPOCH:fromYmd;
   const runCO={};
   for(const u of UP3S) runCO[u]=0;
 
-  // Warm up CO chain from month start to day before fromYmd
-  if(monthStart<fromYmd){
-    for(const ymd of datesBetween(monthStart,dayBefore(fromYmd))){
+  // Warm up CO chain dari warmStart s.d. sehari sebelum fromYmd
+  if(warmStart<fromYmd){
+    for(const ymd of datesBetween(warmStart,dayBefore(fromYmd))){
       for(const u of UP3S){
         // Reset CO saat masuk periode baru yang bertanda resetCO
         const p=getTP(ymd);
         if(p.resetCO && p.from===ymd) runCO[u]=0;
         const base=baseTgt(u,ymd);
         const eff=base+runCO[u];
-        const real=(S.rekap[u]&&S.rekap[u][ymd])||0;
+        const real=getRealFor(u,ymd);
         runCO[u]=Math.max(0,eff-real);
       }
     }
@@ -647,7 +803,7 @@ function computeRange(fromYmd,toYmd){
       if(p.resetCO && p.from===ymd) runCO[u]=0;
       const base=baseTgt(u,ymd);
       const eff=base+runCO[u];
-      const real=(S.rekap[u]&&S.rekap[u][ymd])||0;
+      const real=getRealFor(u,ymd);
       totBase[u]+=base;
       totEff[u]+=eff;
       totReal[u]+=real;
@@ -981,6 +1137,7 @@ function loadData(){
       parseRekap(res.rekap);
       if(res.rekapulp)parseRekapUlp(res.rekapulp);
       if(res.ulpup3)parseUlpMaster(res.ulpup3);
+      if(res.updateSheet)parseUpdate(res.updateSheet);
       S.loaded=true;
       document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('id-ID');
       setStatus('✅ Data dimuat · '+Object.keys(S.targets).length+' UP3');
@@ -998,6 +1155,11 @@ function loadData(){
   // BONUS — tidak blokir; kalau sheet belum siap/gagal → abaikan, re-render setelah tiba
   fetchGviz('rekap_ulp','A:D',j=>{res.rekapulp=j;if(S.loaded){parseRekapUlp(j);renderAll();}},e=>{});
   fetchGviz('UP3-ULP','A1:B200',j=>{res.ulpup3=j;if(S.loaded){parseUlpMaster(j);renderAll();}},e=>{});
+  // Sheet Update: realisasi historis s.d. Sep 29 (wide format, ~100 kolom)
+  fetchGviz('Update','A1:ZZ200',j=>{
+    res.updateSheet=j;
+    if(S.loaded){parseUpdate(j);renderAll();}
+  },e=>{/* bonus: abaikan jika gagal */});
 }
 
 // ══════════════════════════════════════════════
@@ -1119,31 +1281,70 @@ function saveSettingsPin(pin){
 }
 
 function toggleSettings(){
-  if(settingsUnlocked){
-    // Jika sudah unlock, toggle close
-    const p=document.getElementById('settingsPanel');
-    if(p.classList.contains('open')){
-      p.classList.remove('open');
-      settingsUnlocked=false;
-    } else {
-      openSettingsPanel();
-    }
-    return;
+  const p=document.getElementById('settingsPanel');
+  if(p.classList.contains('open')){
+    // Tutup panel & reset state
+    p.classList.remove('open');
+    settingsUnlocked=false;
+    const adv=document.getElementById('advancedSettings');
+    const advPin=document.getElementById('advancedPinSection');
+    if(adv)adv.style.display='none';
+    if(advPin)advPin.style.display='';
+  } else {
+    openSettingsPanel();
   }
-  // Belum unlock — tampilkan prompt PIN
-  showPinPrompt();
 }
 
+function openSettingsPanel(){
+  const p=document.getElementById('settingsPanel');
+  p.classList.add('open');
+  // Reset advanced section (butuh PIN lagi setiap buka)
+  const adv=document.getElementById('advancedSettings');
+  const advPin=document.getElementById('advancedPinSection');
+  if(adv)adv.style.display='none';
+  if(advPin)advPin.style.display='';
+  const advInput=document.getElementById('advPinInput');
+  if(advInput)advInput.value='';
+  const advErr=document.getElementById('advPinErr');
+  if(advErr)advErr.style.display='none';
+  // Muat nilai UID Jabar
+  loadUIDInputs();
+}
+
+function unlockAdvanced(){
+  const input=document.getElementById('advPinInput');
+  const err=document.getElementById('advPinErr');
+  const entered=input?input.value.trim():'';
+  if(entered===getSettingsPin()){
+    settingsUnlocked=true;
+    if(document.getElementById('advancedPinSection'))
+      document.getElementById('advancedPinSection').style.display='none';
+    const adv=document.getElementById('advancedSettings');
+    if(adv)adv.style.display='';
+    // Auto-recover TARGET_PERIODS
+    if(!TARGET_PERIODS||!TARGET_PERIODS.length){
+      TARGET_PERIODS=JSON.parse(JSON.stringify(TP_DEFAULT));
+      saveTP(TARGET_PERIODS);
+    }
+    renderHolChips();
+    renderTPList();
+    if(document.getElementById('pinNewInput'))document.getElementById('pinNewInput').value='';
+    if(document.getElementById('pinConfirmInput'))document.getElementById('pinConfirmInput').value='';
+  } else {
+    if(err){err.style.display='block';setTimeout(()=>err.style.display='none',2000);}
+    if(input){input.value='';input.focus();}
+  }
+}
+
+// Fungsi lama (tetap ada untuk kompatibilitas, sekarang tidak dipakai)
 function showPinPrompt(){
   document.getElementById('pinOverlay').style.display='flex';
   document.getElementById('pinInput').value='';
   setTimeout(()=>document.getElementById('pinInput').focus(),100);
 }
-
 function closePinPrompt(){
   document.getElementById('pinOverlay').style.display='none';
 }
-
 function submitPin(){
   const entered=document.getElementById('pinInput').value.trim();
   if(entered===getSettingsPin()){
@@ -1158,20 +1359,6 @@ function submitPin(){
   }
 }
 
-function openSettingsPanel(){
-  const p=document.getElementById('settingsPanel');
-  p.classList.add('open');
-  // Auto-recover: kalau TARGET_PERIODS kosong (localStorage corrupt), reset ke default
-  if(!TARGET_PERIODS||!TARGET_PERIODS.length){
-    TARGET_PERIODS=JSON.parse(JSON.stringify(TP_DEFAULT));
-    saveTP(TARGET_PERIODS);
-  }
-  renderHolChips();
-  renderTPList();
-  document.getElementById('pinNewInput').value='';
-  document.getElementById('pinConfirmInput').value='';
-}
-
 function changePIN(){
   const np=document.getElementById('pinNewInput').value.trim();
   const cp=document.getElementById('pinConfirmInput').value.trim();
@@ -1183,9 +1370,22 @@ function changePIN(){
   toast('PIN berhasil diubah');
 }
 
+// Hitung tanggal awal default:
+// - Cari periode resetCO yang sudah mulai → gunakan from-nya (fresh start)
+// - Jika tidak ada → gunakan awal bulan (akumulasi dari tanggal 1)
+function getDefaultFrom(todayYmd){
+  let resetDate=null;
+  for(const p of TARGET_PERIODS){
+    if(p.resetCO && p.from && p.from<=todayYmd){
+      if(!resetDate||p.from>resetDate) resetDate=p.from;
+    }
+  }
+  return resetDate || (todayYmd.slice(0,7)+'-01');
+}
+
 function setToday(){
   const t=toYMD(new Date());
-  document.getElementById('dateFrom').value=t;
+  document.getElementById('dateFrom').value=getDefaultFrom(t);
   document.getElementById('dateTo').value=t;
   renderAll();
 }
@@ -1204,7 +1404,7 @@ function toast(msg,dur=3000){
 // ══════════════════════════════════════════════
 function init(){
   const today=toYMD(new Date());
-  document.getElementById('dateFrom').value=today;
+  document.getElementById('dateFrom').value=getDefaultFrom(today);
   document.getElementById('dateTo').value=today;
   document.getElementById('dateFrom').addEventListener('change',renderAll);
   document.getElementById('dateTo').addEventListener('change',renderAll);
