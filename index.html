@@ -991,6 +991,31 @@ function computeRange(fromYmd,toYmd){
   // ─── CURRENT (Sep30+): hitung dengan formula ───────────────────────────
   // runCO dari histDays terakhir (atau 0 jika histDays kosong)
   // S.updateCO TIDAK dipakai → period 3 (Sep30) punya resetCO:true → CO di-reset di loop
+
+  // ─── Pre-compute CO dari period start jika fromYmd > period start ─────────
+  // Misal: user lihat Oct 1 saja (from=to="2026-10-01"), tapi CO dari Sep30 harus terbawa.
+  // Jika histDays kosong DAN curDays[0] LEBIH DARI p.from, kita jalankan loop "bayangan"
+  // dari p.from sampai sehari sebelum curDays[0] — hanya untuk mengisi runCO,
+  // tidak ditambahkan ke totBase/totEff/totReal.
+  if(curDays.length>0 && histDays.length===0){
+    const firstCurDay=curDays[0];
+    const pFirst=getTP(firstCurDay);
+    if(pFirst&&pFirst.resetCO&&pFirst.from&&pFirst.from<firstCurDay){
+      // Reset CO di period start (Sep30)
+      for(const u of UP3S) runCO[u]=0;
+      // Bayangan: accumulate CO dari p.from s/d sehari sebelum firstCurDay
+      const preDays=datesBetween(pFirst.from, dayBefore(firstCurDay));
+      for(const ymd of preDays){
+        for(const u of UP3S){
+          const base=baseTgt(u,ymd);
+          const eff =base+runCO[u];
+          const real=getRealFor(u,ymd);
+          runCO[u]=Math.max(0,eff-real);
+        }
+      }
+    }
+  }
+
   if(curDays.length>0){
     for(const ymd of curDays){
       // Reset CO di awal period baru yang memiliki resetCO:true
