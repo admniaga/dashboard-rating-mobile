@@ -1748,7 +1748,7 @@ function toast(msg,dur=3000){
 function init(){
   console.log('🔖 Dashboard build:', BUILD_VER);
   const today=toYMD(new Date());
-  document.getElementById('dateFrom').value=getDefaultFrom(today);
+  document.getElementById('dateFrom').value=today;
   document.getElementById('dateTo').value=today;
   document.getElementById('dateFrom').addEventListener('change',renderAll);
   document.getElementById('dateTo').addEventListener('change',renderAll);
