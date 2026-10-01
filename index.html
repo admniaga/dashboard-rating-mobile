@@ -1728,7 +1728,7 @@ function getDefaultFrom(todayYmd){
 
 function setToday(){
   const t=toYMD(new Date());
-  document.getElementById('dateFrom').value=getDefaultFrom(t);
+  document.getElementById('dateFrom').value=t;
   document.getElementById('dateTo').value=t;
   renderAll();
 }
