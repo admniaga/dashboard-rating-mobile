@@ -217,7 +217,7 @@ tr.row-ng td.tl{color:var(--red)!important}
   <label>Sampai:</label>
   <input type="date" id="dateTo">
   <button class="btn btn-light" onclick="setToday()">Hari Ini</button>
-  <button class="btn btn-w" onclick="loadData()">⟳ Refresh</button>
+  <button class="btn btn-w" onclick="window.location.reload()">⟳ Refresh</button>
   <span class="dbadge" id="dayBadge" style="display:none"></span>
 </div>
 
@@ -894,8 +894,16 @@ function _setUpdateBadge(cnt){
   el.style.display='';
 }
 
-// Realisasi UP3 untuk curDays (Sep30+) — dari rekap_new.
+// Realisasi UP3 untuk curDays (Sep30+):
+// Prioritas 1: sum ULP dari S.ulp (UP3 sudah dikoreksi via mapping ULP-UP3)
+// Prioritas 2: S.rekap dari rekap_new (UP3 dari form, bisa salah — fallback)
 function getRealFor(up3,ymd){
+  const ulpMap=S.ulp[up3];
+  if(ulpMap){
+    let sum=0;
+    for(const ulp of Object.keys(ulpMap)) sum+=(ulpMap[ulp][ymd]||0);
+    if(sum>0)return sum;
+  }
   return (S.rekap[up3]&&S.rekap[up3][ymd])||0;
 }
 
@@ -1001,23 +1009,33 @@ function parseRekapUlp(gviz){
   // TIDAK reset S.ulp di sini — parseRekapOld sudah mengisi historis
   if(!gviz||!gviz.table)return;
   const rows=gviz.table.rows||[];
+
+  // Bangun ULP→UP3 dari ulpMaster agar UP3 yang salah pilih di form bisa dikoreksi
+  const ulp2up3={};
+  for(const up3k of Object.keys(S.ulpMaster)){
+    for(const ulp of (S.ulpMaster[up3k]||[])) ulp2up3[ulp.toUpperCase().trim()]=up3k;
+  }
+  const hasMaster=Object.keys(ulp2up3).length>0;
+
   let cnt=0;
   for(const row of rows){
-    const up3=gStr(row,0).toUpperCase().trim();
+    const up3Raw=gStr(row,0).toUpperCase().trim();
     const ulp=gStr(row,1).toUpperCase().trim();
-    if(!up3||!ulp)continue;
+    if(!up3Raw||!ulp)continue;
     const ymd=gDateCell((row.c||[])[2]);
     if(!ymd)continue;
     // Hanya ambil data > BATAS_UPDATE dari rekap_ulp
     if(ymd<=BATAS_UPDATE)continue;
     const v=parseInt(gVal(row,3))||0;
     if(!v)continue;
+    // Gunakan UP3 dari mapping (benar), fallback ke UP3 dari form (bisa salah)
+    const up3=hasMaster?(ulp2up3[ulp]||up3Raw):up3Raw;
     if(!S.ulp[up3])S.ulp[up3]={};
     if(!S.ulp[up3][ulp])S.ulp[up3][ulp]={};
     S.ulp[up3][ulp][ymd]=(S.ulp[up3][ulp][ymd]||0)+v;
     cnt++;
   }
-  console.log('[rekap_ulp] parsed '+cnt+' ULP rows > '+BATAS_UPDATE);
+  console.log('[rekap_ulp] parsed '+cnt+' ULP rows > '+BATAS_UPDATE+(hasMaster?' [UP3 dari mapping]':' [UP3 dari form]'));
 }
 
 // ══════════════════════════════════════════════
