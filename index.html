@@ -1758,36 +1758,3 @@ init();
 </script>
 </body>
 </html>
-Memastikan fallback data lama tetap bekerja saat mapping belum tersedia
-Saya lihat kodenya. Perlu 2 perubahan kecil yang tepat:
-
-1. parseRekapUlp — remap ULP ke UP3 yang benar via mapping:
-
-Added repository Failed
-Repo butuh push access terpisah. Langsung berikan kode perubahannya saja — 2 fungsi yang perlu diubah di index.html:
-
-Perubahan 1: parseRekapUlp — tambah remap ULP→UP3
-Cari fungsi ini:
-
-javascript
-function parseRekapUlp(gviz){
-  // TIDAK reset S.ulp di sini — parseRekapOld sudah mengisi historis
-  if(!gviz||!gviz.table)return;
-  const rows=gviz.table.rows||[];
-  let cnt=0;
-  for(const row of rows){
-    const up3=gStr(row,0).toUpperCase().trim();
-    const ulp=gStr(row,1).toUpperCase().trim();
-    if(!up3||!ulp)continue;
-    const ymd=gDateCell((row.c||[])[2]);
-    if(!ymd)continue;
-    if(ymd<=BATAS_UPDATE)continue;
-    const v=parseInt(gVal(row,3))||0;
-    if(!v)continue;
-    if(!S.ulp[up3])S.ulp[up3]={};
-    if(!S.ulp[up3][ulp])S.ulp[up3][ulp]={};
-    S.ulp[up3][ulp][ymd]=(S.ulp[up3][ulp][ymd]||0)+v;
-    cnt++;
-  }
-  console.log('[rekap_ulp] parsed '+cnt+' ULP rows > '+BATAS_UPDATE);
-}
