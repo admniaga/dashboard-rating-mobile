@@ -1186,13 +1186,19 @@ function computeULP(fromYmd,toYmd){
     const masterList=S.ulpMaster[u]||null;
     const rekapData=S.ulp[u]||{};
 
-    // Gabungkan: master list (prioritas) + data yang ada di rekap
+    // Gunakan master list sebagai FILTER KETAT:
+    // Jika master ada → hanya tampilkan ULP yang ada di master (abaikan rekap yang salah UP3)
+    // Jika master tidak ada → fallback ke semua ULP dari rekap
     const ulpNames=new Set();
     if(masterList&&masterList.length){
+      // Hanya ULP yang terdaftar di master untuk UP3 ini
       masterList.forEach(n=>{if(isValidUlp(n))ulpNames.add(n);});
+      // ULP dari rekap hanya ditambah jika memang ada di master (sudah tercakup di atas)
+      // TIDAK tambahkan ULP rekap yang tidak ada di master → mencegah ULP salah UP3 muncul
+    } else {
+      // Fallback: tidak ada master, tampilkan semua dari rekap
+      Object.keys(rekapData).forEach(n=>{if(isValidUlp(n))ulpNames.add(n);});
     }
-    // Tambahkan ULP dari rekap yang valid (jika tidak ada master)
-    Object.keys(rekapData).forEach(n=>{if(isValidUlp(n))ulpNames.add(n);});
 
     if(!ulpNames.size)continue;
     out[u]={};
