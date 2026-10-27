@@ -1155,8 +1155,8 @@ function parseUlpMaster(gviz){
     const up3=gStr(row,0).toUpperCase().trim();
     const ulp=gStr(row,1).toUpperCase().trim();
     if(!up3||!ulp)continue;
-    // Cari UP3 yang cocok (exact or contains)
-    const matched=UP3S.find(u=>u===up3||up3.includes(u.replace('UP3 ',''))||u.includes(up3));
+    // Cari UP3 yang cocok (strict exact: "UP3 MAJALAYA" atau "MAJALAYA", bukan contains)
+    const matched=UP3S.find(u=>u===up3||u===('UP3 '+up3)||up3===('UP3 '+u));
     const key=matched||up3;
     if(!S.ulpMaster[key])S.ulpMaster[key]=[];
     if(!S.ulpMaster[key].includes(ulp))S.ulpMaster[key].push(ulp);
